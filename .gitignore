@@ -1,15 +1,6 @@
-
-modified:   __pycache__/bencode.cpython-35.pyc
-
-Untracked files:
-  (use "git add <file>..." to include in what will be committed)
-
-	.cache/
-	__pycache__/test_bencode.cpython-35-PYTEST.pyc
-	results.xml
-
 .DS_Store
 ~$*
 *results.xml
 *.cache*
 *__pycache__*
+*.conf
