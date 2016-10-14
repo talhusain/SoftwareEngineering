@@ -7,8 +7,8 @@ from flask import Flask
 
 from db import Database
 
-from index_controller import IndexController, index_page
-from torrent_controller import TorrentController, torrent_page
+from controllers.index import IndexController, index_page
+from controllers.torrent import TorrentController, torrent_page
 
 app = Flask("SlothTorrent")
 app.register_blueprint(index_page)
