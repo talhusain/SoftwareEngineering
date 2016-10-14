@@ -13,3 +13,4 @@ Untracked files:
 *results.xml
 *.cache*
 *__pycache__*
+*.conf.*
