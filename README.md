@@ -33,5 +33,4 @@ Suggested sources for design patterns :sparkles: :eyes:
 
 Documentation (and related reading)
 ---
-Installation and usage documentation is available in the `docs/` directory. <br>
 Be sure to check out [AWS](https://aws.amazon.com/training/?nc2=h_l2_tr), [Docker](https://docs.docker.com/engine/understanding-docker/), and [Jenkins](https://jenkins.io/doc/).
