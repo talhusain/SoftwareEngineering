@@ -3,4 +3,8 @@
 *results.xml
 *.cache*
 *__pycache__*
+<<<<<<< HEAD
 *.conf
+=======
+*settings.conf
+>>>>>>> e9aa50c9f6ad38a8ed1ccf19fcd1b93ef3997859
