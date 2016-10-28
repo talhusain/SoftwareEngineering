@@ -23,4 +23,5 @@ class RequestHandler(object):
 
     @app.route('/admin')
     def admin_page():
-        return "here is where the admin page will go"
+		return "Hello, world! This is the admin page"
+
