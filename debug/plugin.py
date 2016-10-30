@@ -24,6 +24,7 @@ class RegistryHolder(type):
         Here the name of the class is used as key but it could be any class
         parameter.
         """
+        
         cls.REGISTRY[new_cls.__name__] = new_cls
         return new_cls
 

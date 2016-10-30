@@ -43,139 +43,63 @@ Keys must be strings and appear in sorted order (sorted as raw strings, not alph
     Example: de represents an empty dictionary {}
 '''
 
+import re
+import string
 import itertools
 
-class Bencode(object):
-    '''
-    All strings are expected to be byte strings. ie: b'test' not 'test'
-    '''
-    def encode(data):
-        if isinstance(data, int):
-            return b"i" + str(data).encode() + b"e"
-        elif isinstance(data, bytes):
-            return str(len(data)).encode() + b":" + data
-        elif isinstance(data, str):
-            return Bencode.encode(data.encode("ascii"))
-        elif isinstance(data, list):
-            return b"l" + b"".join(map(Bencode.encode, data)) + b"e"
-        elif isinstance(data, dict):
-            if all(isinstance(i, bytes) for i in data.keys()):
-                items = list(data.items())
-                items.sort()
-                return b"d" + b"".join(map(Bencode.encode, itertools.chain(*items))) + b"e"
-            else:
-                raise ValueError("dict keys should be bytes")
-        raise ValueError("Allowed types: int, bytes, list, dict; not %s", type(data))
-
-    def decode(data):
-        if not isinstance(data, list):
-            data = Bencode._tokenize(data)
-        if data[0] == b'i':
-            return int(data[1].decode())
-        elif data[0] == b'd':
-            # Each dict can be thought of as list [key,val,key,val]. We just have to remove the colon seperators
-            # and call recursively, then do some cleaning to get it in dict format
-            data[0] = b'l'
-            print(data)
-            r = {}
-            dict_end = Bencode._find_ending_token(data)
-            for token in range(len(data[:dict_end])):
-                if data[token] == b':':
-                    if not Bencode._is_integer(data[token-1]):
-                        del data[token]
-                        data.append(b'e')
-            # Zipping so we dont have a lot of clutter working through these. Can be improved for performace later
-            for key,val in zip(Bencode.decode(data)[0::2], Bencode.decode(data)[1::2]):
-                r[key] = val
-            return r
-
-        elif data[0] == b'l':
-            data = data[1:] + [b'e'] # padding 'hack' so the length is right
-            r = []
-            start = 0
-            while data[start] != b'e':
-                end_block = Bencode._find_ending_token(data[start:])+start
-                val = Bencode.decode(data[start:end_block+1])
-                r.append(val)
-                start = end_block+1
-            return r
+def encode(data):
+    if isinstance(data, int):
+        return b"i" + str(data).encode() + b"e"
+    elif isinstance(data, bytes):
+        return str(len(data)).encode() + b":" + data
+    elif isinstance(data, str):
+        return encode(data.encode("ascii"))
+    elif isinstance(data, list):
+        return b"l" + b"".join(map(encode, data)) + b"e"
+    elif isinstance(data, dict):
+        if all(isinstance(i, bytes) for i in data.keys()):
+            items = list(data.items())
+            items.sort()
+            return b"d" + b"".join(map(encode, itertools.chain(*items))) + b"e"
         else:
-            return data[2]
-
-    def _find_ending_token(data):
-        """ Given a _tokenized data, returns the index of the ending of the first encoded data. """
-        if not isinstance(data, list):
-            data = Bencode._tokenize(data)
-        if data[0] == b'i':
-            return 2
-        elif data[0] == b'd' or data[0] == b'l':
-            count = 0
-            for index, token in enumerate(data, start=0):
-                if token == b'e':
-                    count -= 1
-                elif token == b'd' or token == b'l':
-                    count += 1
-                if count == 0:
-                    break
-            return index
-        else:
-            return 2
+            raise ValueError("dict keys should be bytes")
+    raise ValueError("Allowed types: int, bytes, list, dict; not %s", type(data))
 
 
-    def _is_integer(data):
-        """ Given a bytestring, returns true if it is a positive integer encoded in ascii"""
-        try:
-            int(data.decode())
-            return True
-        except:
-            return False
-
-    def _tokenize(data):
-        """ Returns the bencode data in a tokenized list. """
-
-        if not isinstance(data, bytes):
-            return data
-
-        if data is None or data == b'':
-            return []
-
-        ret = []
-        data = [bytes([b]) for b in data]
-
-        for index, b in enumerate(data, start=0):
-            if b == b'd':
-                return [b'd'] + Bencode._tokenize(b''.join(data[index+1:]))
-
-            elif b == b'i':
-                offset = 1
-                while data[offset] != b'e':
-                    offset += 1
-                return [b'i'] + [b''.join(data[1:offset])] + Bencode._tokenize(b''.join(data[offset:]))
-
-            elif b == b'l':
-                return [b'l'] + Bencode._tokenize(b''.join(data[index+1:]))
-
-            elif b.isdigit():
-                offset = 1
-                while data[offset].isdigit():
-                    offset += 1
-                val = int(b''.join(data[:offset]).decode())
-                return [b''.join(data[:offset])] + [b':'] + [b''.join(data[offset+1:offset+val+1])] + Bencode._tokenize(b''.join(data[offset+val+1:]))
-
-            elif b == b'e':
-                try:
-                    return [b'e'] + Bencode._tokenize(b''.join(data[index+1:]))
-                except:
-                    return [b'e']
-
-            elif b == b':':
-                return [b':'] + Bencode._tokenize(b''.join(data[index+1:]))
-
+def decode(s):
+    def decode_first(s):
+        if s.startswith(b"i"):
+            match = re.match(b"i(-?\\d+)e", s)
+            return int(match.group(1)), s[match.span()[1]:]
+        elif s.startswith(b"l") or s.startswith(b"d"):
+            l = []
+            rest = s[1:]
+            while not rest.startswith(b"e"):
+                elem, rest = decode_first(rest)
+                l.append(elem)
+            rest = rest[1:]
+            if s.startswith(b"l"):
+                return l, rest
             else:
-                raise ValueError
+                return {i: j for i, j in zip(l[::2], l[1::2])}, rest
+        elif any(s.startswith(i.encode()) for i in string.digits):
+            m = re.match(b"(\\d+):", s)
+            length = int(m.group(1))
+            rest_i = m.span()[1]
+            start = rest_i
+            end = rest_i + length
+            return s[start:end], s[end:]
+        else:
+            raise ValueError("Malformed input.")
+
+    if isinstance(s, str):
+        s = s.encode("ascii")
+
+    ret, rest = decode_first(s)
+    if rest:
+        raise ValueError("Malformed input.")
+    return ret
+
 
 if __name__ == "__main__":
-    # print(Bencode._find_ending_token(b"d3:bar4:spam3:fooi42ee"))
-    # print(Bencode.decode(b"l4:spam4:eggsi3ee"))
-    print(Bencode.decode(b"de"))
-    # print(Bencode.decode(b"llli3eeee"))
+    pass

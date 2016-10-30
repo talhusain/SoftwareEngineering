@@ -34,6 +34,9 @@ class Database(object):
     def _initialize_tables(self):
         cursor = self._connection.cursor()
         cursor.execute("CREATE TABLE IF NOT EXISTS plugins (url TEXT, last_run TIMESTAMP)")
+        cursor.execute("CREATE TABLE IF NOT EXISTS torrents (info_hash BYTEA PRIMARY KEY, name TEXT, comment TEXT, created_by TEXT, creation_time TIMESTAMP, piece_length INT, pieces BYTEA)")
+        cursor.execute("CREATE TABLE IF NOT EXISTS announcers (url TEXT, info_hash BYTEA REFERENCES torrents (info_hash), PRIMARY KEY (url, info_hash))")
+        cursor.execute("CREATE TABLE IF NOT EXISTS torrent_files (file_path TEXT, length INT, info_hash BYTEA REFERENCES torrents (info_hash), PRIMARY KEY (file_path, length, info_hash))")
         self._connection.commit()
 
     def execute(self, statement):
