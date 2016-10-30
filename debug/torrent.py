@@ -3,8 +3,7 @@ FILE: torrent.py
 CLASS PROVIDED: Torrent
 """
 
-import bencode.bencode   # The module bencode imported from the bencode package (Consider change to naming convention?).
-
+import bencoding.bencode
 import requests
 import hashlib
 import peer
@@ -14,9 +13,8 @@ import random
 import json
 from string import ascii_letters, digits
 
-
-
-# SOME STUFF ABOUT NAMING CONVENTIONS MIGHT GET BROUGHT UP IN THE SLACK CHANNEL SOON.
+class TorrentClient(object):
+    # def
 
 class Torrent(object):
 
@@ -36,31 +34,23 @@ class Torrent(object):
 
     @property
     def piece_length(self):
-        return self.torrent_dict['info']['piece length']
+        pass
 
     @property
     def num_pieces(self):
-        num, rem = divmod(len(self.torrent_dict['info']['pieces']), 20)
-        if rem == 0:
-            return num
-        else:
-            raise Exception("Improperly formed 'pieces' entry in torrent_dict")
+        pass
 
     @property
     def length(self):
-        if 'files' in self.torrent_dict['info']:
-            return sum([i['length'] for i in
-                       self.torrent_dict['info']['files']])
-        else:
-            return self.torrent_dict['info']['length']
+        pass
 
     @property
     def last_piece_length(self):
-        return self.length - (self.piece_length * (self.num_pieces - 1))
+        pass
 
     @property
     def last_piece(self):
-        return self.num_pieces - 1
+        pass
 
     def build_payload(self):
         '''
@@ -85,15 +75,6 @@ class Torrent(object):
 
 
     def handshake_peers(self):
-        '''
-        Suggested local variables:
-
-        pstrlen = length of pstr as one byte
-        pstr = BitTorrent protocol
-        reserved = chr(0)*8
-        info_hash = 20-byte hash above (aka self.hash_string)
-        peer_id = 20-byte string
-        '''
         pass
 
     def initpeer(self, sock):
@@ -116,5 +97,4 @@ class Torrent(object):
         pass
 
     def __exit__(self):
-        #self.switchboard.close()
         pass
