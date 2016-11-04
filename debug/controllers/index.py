@@ -15,5 +15,4 @@ class IndexController(object):
 
     @index_page.route('/')
     def index():
-        return "You are looking at the index page</br>This is where the " + \
-               "search  field will be displayed"
+        return "You are looking at the index page</br>This is where the search  field will be displayed"
