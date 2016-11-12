@@ -42,6 +42,7 @@ class Database(object):
         cursor.execute("CREATE TABLE IF NOT EXISTS torrents (info_hash BYTEA PRIMARY KEY, name TEXT, comment TEXT, created_by TEXT, creation_time TIMESTAMP, piece_length INT, pieces BYTEA)")
         cursor.execute("CREATE TABLE IF NOT EXISTS announcers (url TEXT, info_hash BYTEA REFERENCES torrents (info_hash), PRIMARY KEY (url, info_hash))")
         cursor.execute("CREATE TABLE IF NOT EXISTS torrent_files (file_path TEXT, length INT, info_hash BYTEA REFERENCES torrents (info_hash), PRIMARY KEY (file_path, length, info_hash))")
+        cursor.execute("CREATE TABLE IF NOT EXISTS users (username TEXT PRIMARY KEY, password_hash TEXT, admin_access BOOLEAN)")
         self._connection.commit()
 
     def _add_fake_torrents(self):
@@ -135,4 +136,18 @@ class Database(object):
             BOOL: success or failure
         """
         pass
+
+    def add_user(self, username, password_hash, admin_access):
+        """Add a user to the database
+        Args:
+            username (string): Adds the specified username to the database
+            password_hash (string)
+            admin_access (boolean)
+
+        Returns:
+            boolean: success or failure
+        """
+        pass
+
+    def remove_user(self, username):
 
