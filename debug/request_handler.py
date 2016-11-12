@@ -10,9 +10,14 @@ from db import Database
 from controllers.index import IndexController, index_page
 from controllers.torrent import TorrentController, torrent_page
 
-app = Flask(__name__)
+app = Flask(__name__, static_url_path='/static')
 app.register_blueprint(index_page)
 app.register_blueprint(torrent_page)
+
+# serve static files from flask for dev purposes, nginx will be configured later to serve them
+@app.route('/static/<path:path>')
+def send_static(path):
+    return send_from_directory('static', path)
 
 class RequestHandler(object):
 

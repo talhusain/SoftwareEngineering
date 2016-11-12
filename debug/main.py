@@ -15,7 +15,7 @@ def main():
 
     # Initialize Plugin Loader Object so it can load plugins and start
     # populating the database
-    plugin.Loader(db)
+    plugin.Loader(db, 'settings.conf')
 
     # Initialize the request handler and start taking http requests
     rh = RequestHandler(db)

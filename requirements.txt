@@ -2,3 +2,5 @@ pytest
 Flask
 pg8000
 gitpython
+requests
+psycopg2

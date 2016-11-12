@@ -25,7 +25,6 @@ def get_peer_list(torrent_path):
     with open(torrent_path, 'rb') as f:
         read_data = f.read()
         data = decode(read_data)
-    # pp.pprint(data)
 
     # Generate hash of info field
     info_hash = hashlib.sha1(encode(data[b'info'])).digest()
@@ -116,7 +115,7 @@ for file in os.listdir('sample_torrents'):
     with open('sample_torrents/' + file, 'rb') as f:
         read_data = f.read()
         data = decode(read_data)
-    pp.pprint(data)
+    #pp.pprint(data)
         
     # Generate hash of info field
     info_hash = hashlib.sha1(encode(data[b'info'])).digest()
