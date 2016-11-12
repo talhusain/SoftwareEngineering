@@ -140,7 +140,7 @@ class Database(object):
     def add_user(self, username, password_hash, admin_access):
         """Add a user to the database
         Args:
-            username (string): Adds the specified username to the database
+            username (string): Adds the specified user to the database
             password_hash (string)
             admin_access (boolean)
 
@@ -150,4 +150,11 @@ class Database(object):
         pass
 
     def remove_user(self, username):
+        """Remove a user from the database
+        Args:
+            username (string): Removes the specified user from the database
 
+        Returns:
+            boolean: success or failure
+        """
+        pass
