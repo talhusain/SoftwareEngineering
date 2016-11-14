@@ -5,7 +5,11 @@ depending on how complex it gets.
 """
 
 import configparser
+import os
+from git import Repo
+from urllib.parse import urlparse
 from db import Database
+
 
 class Loader(object):
     def __init__(self, db, settings_file):
@@ -21,3 +25,16 @@ class Loader(object):
         config = configparser.ConfigParser()
         config.read(self.settings_file)
         self.plugin_dir = config['PLUGINS']['directory']
+
+    def clone_plugin(self, url):
+        path = urlparse(url).path
+        path = os.path.join(self.plugin_dir, path[1:])
+        if not os.path.exists(path):
+            Repo.clone_from(url, path)
+        return path
+
+
+if __name__ == '__main__':
+    print('running')
+    loader = Loader(None, 'settings.conf')
+    loader.clone_plugin('https://github.com/BadStreff/SlothTorrent-yts')

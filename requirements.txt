@@ -4,3 +4,4 @@ pg8000
 gitpython
 requests
 psycopg2
+pluginbase
