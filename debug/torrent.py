@@ -2,99 +2,79 @@
 FILE: torrent.py
 CLASS PROVIDED: Torrent
 """
-
-import bencoding.bencode
-import requests
-import hashlib
-import peer
-import time
+from bencoding.bencode import encode, decode
+from datetime import datetime as dt
+from hashlib import sha1
 import os
-import random
-import json
-from string import ascii_letters, digits
 
-class TorrentClient(object):
-    # def
 
 class Torrent(object):
 
-    def __init__(self, torrent_path, directory='', port=55308, download_all=False, visualizer=None):
-        torrent_dict = bencode.decode(torrent_path)
-        self.torrent_dict = torrent_dict   # I (tentatively) preserved the way @jefflovejapan handled the torrent dictionary in his implementation.
-        self.peer_dict = {}
-        self.peer_ips = []
-        self.port = port
-        self.download_all = download_all  # Presumably a boolean indicating whether to download all files associated with a multifile torrent?
-        self.r = None    # Tracker requests?
-        self.tracker_response = None
-        self.hash_string = None    # SHA-1 ?
-        self.queued_requests = []
+    def __init__(self, torrent_dict):
+        """Constructs a torrent objects from a decoded torrent
+           dictionary.
 
-        file_list = []
+        Args:
+            torrent_dict (dict): Decoded torrent file, all strings are
+            expected to b byte strings and will be decoded into regular
+            strings.
+        """
+        self.files = []
+        self.trackers = []
+        self._torrent_dict = torrent_dict
 
-    @property
-    def piece_length(self):
-        pass
+        # Populate Optional Fields
+        if b'comment' in self._torrent_dict:
+            self.comment = self._torrent_dict[b'comment'].decode('utf-8')
+        if b'created by' in self._torrent_dict:
+            self.created_by = self._torrent_dict[b'created by'].decode('utf-8')
+        if b'creation date' in self._torrent_dict:
+            creation_date_timestamp = self._torrent_dict[b'creation date']
+            self.creation_date = dt.fromtimestamp(creation_date_timestamp)
+        if b'encoding' in self._torrent_dict:
+            self.encoding = self._torrent_dict[b'encoding'].decode('utf-8')
 
-    @property
-    def num_pieces(self):
-        pass
+        # Populate required fields
+        self.name = self._torrent_dict[b'info'][b'name'].decode('utf-8')
+        self.piece_length = self._torrent_dict[b'info'][b'piece length']
+        self.pieces = self._torrent_dict[b'info'][b'pieces']
+        self.info_hash = sha1(encode(self._torrent_dict[b'info'])).digest()
 
-    @property
-    def length(self):
-        pass
+        # Add single file(s)
+        if b'length' in self._torrent_dict[b'info']:
+            path = self._torrent_dict[b'info'][b'name'].decode('utf-8')
+            length = self._torrent_dict[b'info'][b'length']
+            self.files.append({'path': path, 'length': length})
+        else:
+            for file in self._torrent_dict[b'info'][b'files']:
+                path = [path.decode('utf-8') for path in file[b'path']]
+                self.files.append({'path': os.path.join(*path),
+                                   'length': file[b'length']})
 
-    @property
-    def last_piece_length(self):
-        pass
+        # add tracker(s)
+        if b'announce' in self._torrent_dict:
+            self.trackers.append(self._torrent_dict[b'announce'])
+        if b'announce-list' in self._torrent_dict:
+            for trackers in self._torrent_dict[b'announce-list']:
+                for tracker in trackers:
+                    self.trackers.append(tracker.decode('utf-8'))
 
-    @property
-    def last_piece(self):
-        pass
+    def get_comment(self):
+        return self.comment
 
-    def build_payload(self):
-        '''
-        Builds the payload that will be sent in tracker_request
-        '''
-        pass
-
-    def tracker_request(self):
-        '''
-        Sends the initial request to the tracker, compiling list of all peers
-        announcing to the tracker
-        '''
-        pass
-
-    def get_peer_ips(self):
-        '''
-        Generates list of peer IPs from tracker response. Note: not all of
-        these IPs might be good, which is why we only init peer objects for
-        the subset that respond to handshake
-        '''
-        pass
-
-
-    def handshake_peers(self):
-        pass
-
-    def initpeer(self, sock):
-        '''
-        Creates a new peer object for a valid socket and adds it to reactor's
-        listen list
-        '''
-        pass
-
-    def add_peer(self, socket):
-        pass
-
-    def kill_peer(self, tpeer):
-        pass
-
-    def set_socket(self, socket):
-        pass
+    def __str__(self):
+        return self.name
 
     def __enter__(self):
         pass
 
     def __exit__(self):
         pass
+
+
+if __name__ == '__main__':
+    for file in os.listdir('sample_torrents'):
+        with open('sample_torrents/' + file, 'rb') as f:
+            torrent_dict = decode(f.read())
+            torrent = Torrent(torrent_dict)
+            print(torrent)
