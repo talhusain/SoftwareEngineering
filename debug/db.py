@@ -51,7 +51,7 @@ class Database(object):
         self._connection = self.get_connection()
         cursor = self._connection.cursor()
         cursor.execute("CREATE TABLE IF NOT EXISTS plugins"
-                       "(id TEXT PRIMARY KEY, url TEXT, last_run TIMESTAMP)"
+                       "(url TEXT, last_run TIMESTAMP)"
                        "(url TEXT PRIMARY KEY, last_run TIMESTAMP)")
         cursor.execute("CREATE TABLE IF NOT EXISTS torrents "
                        "(info_hash BYTEA PRIMARY KEY,"
