@@ -1,30 +1,7 @@
-Skip to content
-This repository
-Search
-Pull requests
-Issues
-Gist
- @squidmin
- Unwatch 9
-  Unstar 8
- Fork 5 talhusain/SoftwareEngineering
- Code  Issues 16  Pull requests 1  Projects 0  Wiki  Pulse  Graphs
-Branch: dev Find file Copy pathSoftwareEngineering/debug/torrent.py
-dde4689  6 days ago
-@BadStreff BadStreff Resolved an issue where the created_by variable was be ing overwritte…
-2 contributors @squidmin @BadStreff
-RawBlameHistory     
-72 lines (61 sloc)  2.69 KB
-"""
-FILE: torrent.py
-CLASS PROVIDED: Torrent
-"""
-
-from bencoding.bencode import encode, decode
+from bencode import encode, decode
 from datetime import datetime
 from hashlib import sha1
 import os
-
 
 class Torrent(object):
     def __init__(self, torrent_dict):
@@ -48,7 +25,7 @@ class Torrent(object):
             self.created_by = self._torrent_dict[b'encoding'].decode('utf-8')
 
         # Populate required fields
-        self.name = self.created_by = self._torrent_dict[b'info'][b'name'].decode('utf-8')
+        self.name = self._torrent_dict[b'info'][b'name'].decode('utf-8')
         self.piece_length = self._torrent_dict[b'info'][b'piece length']
         self.pieces = self._torrent_dict[b'info'][b'pieces']
         self.info_hash = sha1(encode(self._torrent_dict[b'info'])).digest()
@@ -86,6 +63,5 @@ if __name__ == '__main__':
             torrent_dict = decode(f.read())
             torrent = Torrent(torrent_dict)
             print(torrent)
+            
     data = None
-Contact GitHub API Training Shop Blog About
-© 2016 GitHub, Inc. Terms Privacy Security Status Help

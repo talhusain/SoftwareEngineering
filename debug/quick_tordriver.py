@@ -1,6 +1,6 @@
 #!/usr/local/opt/python3/bin/python3
 
-from bencoding.bencode import encode, decode
+from bencode import encode, decode
 import hashlib
 import requests
 import socket
