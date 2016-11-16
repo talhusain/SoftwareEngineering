@@ -42,16 +42,12 @@ class Database(object):
         #self._initialize_tables()
         #self._add_fake_torrents()
         #self._add_sample_torrents()
-        self._initialize_tables()
-        # self._add_fake_torrents()
-        # self._add_sample_torrents()
         self._connection.close()
 
     def _initialize_tables(self):
         self._connection = self.get_connection()
         cursor = self._connection.cursor()
         cursor.execute("CREATE TABLE IF NOT EXISTS plugins"
-                       "(url TEXT, last_run TIMESTAMP)"
                        "(url TEXT PRIMARY KEY, last_run TIMESTAMP)")
         cursor.execute("CREATE TABLE IF NOT EXISTS torrents "
                        "(info_hash BYTEA PRIMARY KEY,"
