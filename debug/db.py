@@ -239,18 +239,77 @@ class Database(object):
         Returns:
             Torrent: see torrent.py for more information
         """
-        pass
+        
+        """
+        info_hash BYTEA PRIMARY KEY,
+        name TEXT,
+        comment TEXT,
+        created_by TEXT,
+        creation_time TIMESTAMP,
+        piece_length INT,
+        pieces BYTEA
+        """
+        
+        cursor = self._connection.cursor()
+        try:
+            cursor.execute( ("SELECT * FROM torrents WHERE info_hash = 'asdfasdf'") )
+            tup = cursor.fetchone()
+        except psycopg2.ProgrammingError as e:
+            print(e)
+            return None
+        cursor.close()
+        
+        info_hash = bytes(tup[0])
+        name = tup[1]
+        comment = tup[2]
+        created_by = tup[3]
+        creation_time = tup[4]
+        piece_length = tup[5]
+        pieces = bytes(tup[6])
+
+        torrent = {}
+        torrent[b'info hash'] = info_hash
+        torrent[b'name'] = str.encode(name)
+        torrent[b'comment'] = str.encode(comment)
+        torrent[b'created by'] = str.encode(created_by)
+        torrent[b'creation time'] = creation_time
+        torrent[b'piece length'] = piece_length
+        torrent[b'pieces'] = pieces
+        torrent[b'files'] = []
+        torrent[b'info'] = { 
+                             b'name': str.encode(name),
+                             b'piece length': piece_length,
+                             b'pieces': pieces,
+                             b'files': [
+                                        { b'path': [ str.encode('a'), 
+                                                     str.encode('fake'), 
+                                                     str.encode('path') ] },
+                                        { b'length': 43 }
+                                       ]
+                           }
+
+        return Torrent(torrent)
 
     def add_plugin(self, url):
         """Add a plugin URL to the database
-
         Args:
             url (string): Full patch a .git repo that is the plugin
-
+        Args:
+            url (string): Full patch a .git repo that is the plugin
         Returns:
             BOOL: success or failure
         """
-        pass
+        
+        cursor = self._connection.cursor()
+        try:
+            cursor.execute( ("INSERT INTO plugins VALUES (%s, %s, %s) "
+                             "ON CONFLICT (id) DO NOTHING"),
+                             ('001', 'some/url/and/some/goats.txt', datetime.datetime.now()) )
+        except psycopg2.ProgrammingError as e:
+            print(e)
+            return False
+        cursor.close()
+        return True
 
     def remove_plugin(self, url):
         """Remove a plugin from the database
