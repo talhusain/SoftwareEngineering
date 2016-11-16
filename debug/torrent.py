@@ -1,6 +1,4 @@
 from bencode import encode, decode
-from datetime import datetime
-from bencoding.bencode import encode, decode
 from datetime import datetime as dt
 from hashlib import sha1
 import os
