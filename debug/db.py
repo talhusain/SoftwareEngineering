@@ -351,26 +351,19 @@ class Database(object):
 
     def remove_plugin(self, url):
         """Remove a plugin from the database
-<<<<<<< HEAD
         Args:
             url (string): Removes the specified plugin url from the
             database
-=======
 
         Args:
             url (string): Removes the specified plugin url from the
             database
 
->>>>>>> 7f53710bed8128ecbb99c37ebd94066da5b8aac9
         Returns:
             BOOL: success or failure
         """
         pass
 
-<<<<<<< HEAD
-if __name__ == '__main__':
-    pass  
-=======
     def get_all_plugin(self):
         """Returns a list of tuples of all plugins in the database
 
@@ -385,4 +378,3 @@ if __name__ == '__main__':
                                 host=self.ip,
                                 port=int(self.port),
                                 database=self.db_name)
->>>>>>> 7f53710bed8128ecbb99c37ebd94066da5b8aac9
