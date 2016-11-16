@@ -268,20 +268,6 @@ class Database(object):
 
     def get_torrent(self, info_hash):
         """Returns a torrent from the database given an info_hash
-        Args:
-            info_hash (bytes): The info_hash of the torrent we want
-            ret = True
-        except psycopg2.ProgrammingError as e:
-            print(e)
-            connection.rollback()
-            ret = False
-        cursor.close()
-        connection.commit()
-        connection.close()
-        return ret
-
-    def get_torrent(self, info_hash):
-        """Returns a torrent from the database given an info_hash
 
         Args:
             info_hash (bytes): The info_hash of the torrent we want
