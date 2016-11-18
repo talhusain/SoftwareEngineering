@@ -52,6 +52,10 @@ class Database(object):
                        "piece_length INT,"
                        "pieces BYTEA,"
                        "provider TEXT REFERENCES plugins (url))")
+        
+            
+        cursor.execute("CREATE INDEX IF NOT EXISTS TIndex on torrents (info_hash)")
+        
         cursor.execute("CREATE TABLE IF NOT EXISTS announcers "
                        "(url TEXT,"
                        "info_hash BYTEA REFERENCES torrents (info_hash),"
