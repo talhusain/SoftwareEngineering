@@ -18,6 +18,7 @@ class Torrent(object):
         self.files = []
         self.trackers = []
         self._torrent_dict = torrent_dict
+        self.length = 0
 
         # Populate Optional Fields
         if b'comment' in self._torrent_dict:
@@ -48,21 +49,23 @@ class Torrent(object):
         if b'length' in self._torrent_dict[b'info']:
             path = self._torrent_dict[b'info'][b'name'].decode('utf-8')
             length = self._torrent_dict[b'info'][b'length']
+            self.length = length
             self.files.append({'path': path, 'length': length})
         else:
             for file in self._torrent_dict[b'info'][b'files']:
                 path = [path.decode('utf-8') for path in file[b'path']]
+                length = file[b'length']
+                self.length += length
                 self.files.append({'path': os.path.join(*path),
-                                   'length': file[b'length']})
+                                   'length': length})
 
         # add tracker(s)
-        if b'announce' in self._torrent_dict:
-            tracker = self._torrent_dict[b'announce'].decode('utf-8')
-            self.trackers.append(tracker)
         if b'announce-list' in self._torrent_dict:
             for trackers in self._torrent_dict[b'announce-list']:
                 for tracker in trackers:
                     self.trackers.append(tracker.decode('utf-8'))
+        elif b'announce' in self._torrent_dict:
+            self.trackers.append(self._torrent_dict[b'announce'])
 
     def get_comment(self):
         return self.comment
