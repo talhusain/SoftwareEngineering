@@ -1,15 +1,11 @@
-import socket
-from struct import pack
 from bencoding import decode
 from tracker import Tracker
+from message import *
+import socket
+from struct import pack
 from enum import Enum
 import random
 from string import ascii_letters, digits
-
-
-class Message(object):
-    def __init__(self):
-        pass
 
 
 class Status(Enum):
@@ -70,6 +66,22 @@ class Session(object):
             data = s.recv(len(handshake))
             s.close()
             return data
+        except Exception as e:
+            print(peer, e)
+            return None
+
+    def send_message(self, peer, message):
+        """ Sends a message"""
+        s = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
+        s.settimeout(1)
+        try:
+            s.connect(peer)
+        except Exception as e:
+            print(peer, e)
+            return None
+        try:
+            s.send(message.to_bytes())
+            s.close()
         except Exception as e:
             print(peer, e)
             return None

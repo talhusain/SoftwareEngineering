@@ -293,4 +293,4 @@ if __name__ == '__main__':
     m1 = Message.get_message('piece', index=0, begin=0, block=b'asdf')
     m2 = Message.get_message('piece', index=0, begin=0, block=b'asdf')
     print(m1.to_bytes())
-    print(Message.get_message_from_bytes(m1.to_bytes()).to_bytes())
+    print(type(Message.get_message_from_bytes(m1.to_bytes())).__name__)
