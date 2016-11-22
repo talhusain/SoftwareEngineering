@@ -20,7 +20,7 @@ class Session(object):
         self.torrent = torrent
         self.location = location
         self.status = Status.downloading
-        self.peer_id = self.generate_peer_id()
+        self.peer_id = Session.generate_peer_id()
 
     def start(self):
         self.status = Status.downloading
