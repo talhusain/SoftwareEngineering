@@ -34,7 +34,8 @@ class Session(object):
     def cancel(self):
         pass
 
-    def generate_peer_id(self):
+    @staticmethod
+    def generate_peer_id():
         """ Returns a 20-byte peer id. """
         CLIENT_ID = "ST"
         CLIENT_VERSION = "0001"
@@ -51,13 +52,13 @@ class Session(object):
         handshake += pack('!20s', bytearray(self.peer_id, 'utf8'))
         return handshake
 
-    def send_recv_handshake(self, peer):
+    def send_recv_handshake(self):
         """ Sends a handshake, returns the data we get back. """
         handshake = self.generate_handshake()
         s = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
         s.settimeout(1)
         try:
-            s.connect(peer)
+            s.connect(self.peer)
         except Exception as e:
             print(peer, e)
             return None
@@ -70,12 +71,12 @@ class Session(object):
             print(peer, e)
             return None
 
-    def send_message(self, peer, message):
-        """ Sends a message"""
+    def send_message(self, message):
+        """ Sends a message """
         s = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
         s.settimeout(1)
         try:
-            s.connect(peer)
+            s.connect(self.peer)
         except Exception as e:
             print(peer, e)
             return None
@@ -94,10 +95,11 @@ if __name__ == '__main__':
         with open('sample_torrents/' + file, 'rb') as f:
             t = Torrent(decode(f.read()))
             print("processing: ", t)
-            session = Session(None, t, None)
             for tracker in t.trackers:
-                trk = Tracker(tracker, t, session.generate_peer_id())
+                trk = Tracker(tracker, t, Session.generate_peer_id())
                 print(trk)
                 peers = trk.get_peers()
                 for peer in peers:
-                    session.send_recv_handshake(peer)
+                    session = Session(peer, t, None)
+                    session.send_recv_handshake()
+                    session.send_message(Message.get_message('keep-alive'))
