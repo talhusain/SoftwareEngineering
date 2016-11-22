@@ -6,8 +6,10 @@ from enum import Enum
 import random
 from string import ascii_letters, digits
 
-CLIENT_ID = "ST"
-CLIENT_VERSION = "0001"
+
+class Message(object):
+    def __init__(self):
+        pass
 
 
 class Status(Enum):
@@ -38,6 +40,8 @@ class Session(object):
 
     def generate_peer_id(self):
         """ Returns a 20-byte peer id. """
+        CLIENT_ID = "ST"
+        CLIENT_VERSION = "0001"
         ALPHANUM = ascii_letters + digits
         random_string = ''.join(random.sample(ALPHANUM, 13))
         return "-" + CLIENT_ID + CLIENT_VERSION + random_string
