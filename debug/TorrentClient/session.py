@@ -15,8 +15,8 @@ class Status(Enum):
 
 
 class Session(object):
-    def __init__(self, torrent, location):
-        self.peers = []     # [(ip, port), ...]
+    def __init__(self, peer, torrent, location):
+        self.peer = peer  # of the format tuple(str(ip), int(port))
         self.torrent = torrent
         self.location = location
         self.status = Status.downloading
@@ -94,7 +94,7 @@ if __name__ == '__main__':
         with open('sample_torrents/' + file, 'rb') as f:
             t = Torrent(decode(f.read()))
             print("processing: ", t)
-            session = Session(t, None)
+            session = Session(None, t, None)
             for tracker in t.trackers:
                 trk = Tracker(tracker, t, session.generate_peer_id())
                 print(trk)
