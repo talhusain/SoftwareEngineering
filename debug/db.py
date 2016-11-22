@@ -32,26 +32,24 @@ class Database(object):
         self.port = config['DATABASE']['port']
         self.db_name = config['DATABASE']['db']
 
-
-       
         # Establish connection object initialize tables
-        #self._drop_all_tables()
+        # self._drop_all_tables()
         self._initialize_tables()
-        #self.add_fake_plugin()
-        #self.remove_plugin("https://github.com/BadStreff/slothtorrent_yts")
+        # self.add_fake_plugin()
+        # self.remove_plugin("https://github.com/BadStreff/slothtorrent_yts")
         # self._add_fake_torrents()
         # self._add_sample_torrents()
         self._connection.close()
-    
+
     def _drop_all_tables(self):
         self._connection = self.get_connection()
         cursor = self._connection.cursor()
-        cursor.execute("DROP TABLE IF EXISTS torrents, plugins, announcers, torrent_files")
+        cursor.execute(("DROP TABLE IF EXISTS torrents, "
+                        "plugins, "
+                        "announcers, "
+                        "torrent_files"))
         self._connection.commit()
         self._connection.close()
-
-
-
 
     def _initialize_tables(self):
         self._connection = self.get_connection()
@@ -66,20 +64,21 @@ class Database(object):
                        "creation_time TIMESTAMP,"
                        "piece_length INT,"
                        "pieces BYTEA,"
-                       "provider TEXT REFERENCES plugins (url) ON UPDATE CASCADE ON DELETE CASCADE)")
+                       "provider TEXT REFERENCES plugins (url) "
+                       "ON UPDATE CASCADE ON DELETE CASCADE)")
         cursor.execute("CREATE TABLE IF NOT EXISTS announcers "
                        "(url TEXT,"
-                       "info_hash BYTEA REFERENCES torrents (info_hash) ON UPDATE CASCADE ON DELETE CASCADE,"
+                       "info_hash BYTEA REFERENCES torrents (info_hash) "
+                       "ON UPDATE CASCADE ON DELETE CASCADE,"
                        "PRIMARY KEY (url, info_hash))")
         cursor.execute("CREATE TABLE IF NOT EXISTS torrent_files "
                        "(file_path TEXT,"
                        "length TEXT,"
-                       "info_hash BYTEA REFERENCES torrents (info_hash) ON UPDATE CASCADE ON DELETE CASCADE,"
+                       "info_hash BYTEA REFERENCES torrents (info_hash) "
+                       "ON UPDATE CASCADE ON DELETE CASCADE,"
                        "PRIMARY KEY (file_path, info_hash))")
         self._connection.commit()
         self._connection.close()
-
-    
 
     def add_fake_plugin(self):
         self._connection = self.get_connection()
@@ -93,76 +92,6 @@ class Database(object):
                         "(%s, %s) "
                         "ON CONFLICT (url) DO NOTHING"),
                        ('https://github.com/BadStreff/slothtorrent_yts', dt))
-        self._connection.commit()
-        self._connection.close()
-
-    def _add_fake_torrents(self):
-        self._connection = self.get_connection()
-        cursor = self._connection.cursor()
-        dt = datetime.datetime.now()
-        cursor.execute(("INSERT INTO plugins VALUES "
-                        "(%s, %s) "
-                        "ON CONFLICT (url) DO NOTHING"),
-                       ('None', dt))
-        cursor.execute(("INSERT INTO plugins VALUES "
-                        "(%s, %s) "
-                        "ON CONFLICT (url) DO NOTHING"),
-                       ('https://github.com/BadStreff/slothtorrent_yts', dt))
-        cursor.execute(("INSERT INTO torrents VALUES "
-                        "(%s, %s, %s, %s, %s, %s, %s, %s) "
-                        "ON CONFLICT (info_hash) DO NOTHING"),
-                       (b'0000',
-                        'sample0',
-                        'sample comment',
-                        'sample creator',
-                        dt,
-                        0,
-                        b'0000',
-                        'None'))
-        cursor.execute(("INSERT INTO torrents VALUES "
-                        "(%s, %s, %s, %s, %s, %s, %s, %s) "
-                        "ON CONFLICT (info_hash) DO NOTHING"),
-                       (b'0001',
-                        'sample1',
-                        'sample comment',
-                        'sample creator',
-                        dt,
-                        0,
-                        b'0000',
-                        'None'))
-        cursor.execute(("INSERT INTO torrents VALUES "
-                        "(%s, %s, %s, %s, %s, %s, %s, %s) "
-                        "ON CONFLICT (info_hash) DO NOTHING"),
-                       (b'0002',
-                        'sample2',
-                        'sample comment',
-                        'sample creator',
-                        dt,
-                        0,
-                        b'0000',
-                        'None'))
-        cursor.execute(("INSERT INTO torrents VALUES "
-                        "(%s, %s, %s, %s, %s, %s, %s, %s) "
-                        "ON CONFLICT (info_hash) DO NOTHING"),
-                       (b'0003',
-                        'sample4',
-                        'sample comment',
-                        'sample creator',
-                        dt,
-                        0,
-                        b'0000',
-                        'None'))
-        cursor.execute(("INSERT INTO torrents VALUES "
-                        "(%s, %s, %s, %s, %s, %s, %s, %s) "
-                        "ON CONFLICT (info_hash) DO NOTHING"),
-                       (b'0005',
-                        'sample5',
-                        'sample comment',
-                        'sample creator',
-                        dt,
-                        0,
-                        b'0000',
-                        'None'))
         self._connection.commit()
         self._connection.close()
 
@@ -301,14 +230,13 @@ class Database(object):
         cursor = connection.cursor()
         try:
             cursor.execute("DELETE FROM plugins WHERE url = %s", (url,))
-            
+
         except psycopg2.ProgrammingError as e:
             print(e)
             return False
         connection.commit()
         connection.close()
         return True
-    
 
     def get_all_plugins(self):
         connection = self.get_connection()
