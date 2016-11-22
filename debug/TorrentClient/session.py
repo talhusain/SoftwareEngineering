@@ -1,11 +1,10 @@
 from bencoding import decode
 from tracker import Tracker
+from util import generate_peer_id
 from message import *
 import socket
 from struct import pack
 from enum import Enum
-import random
-from string import ascii_letters, digits
 
 
 class Status(Enum):
@@ -20,7 +19,11 @@ class Session(object):
         self.torrent = torrent
         self.location = location
         self.status = Status.downloading
-        self.peer_id = Session.generate_peer_id()
+        self.peer_id = generate_peer_id()
+        self.observer = None
+
+    def register_observer(self, observer):
+        self.observer = observer
 
     def start(self):
         self.status = Status.downloading
@@ -33,15 +36,6 @@ class Session(object):
 
     def cancel(self):
         pass
-
-    @staticmethod
-    def generate_peer_id():
-        """ Returns a 20-byte peer id. """
-        CLIENT_ID = "ST"
-        CLIENT_VERSION = "0001"
-        ALPHANUM = ascii_letters + digits
-        random_string = ''.join(random.sample(ALPHANUM, 13))
-        return "-" + CLIENT_ID + CLIENT_VERSION + random_string
 
     def generate_handshake(self):
         """ Returns a handshake. """
@@ -60,7 +54,8 @@ class Session(object):
         try:
             s.connect(self.peer)
         except Exception as e:
-            print(peer, e)
+            print(self.peer, e)
+            self.observer.close_session(self)
             return None
         try:
             s.send(handshake)
@@ -68,7 +63,8 @@ class Session(object):
             s.close()
             return data
         except Exception as e:
-            print(peer, e)
+            print(self.peer, e)
+            self.observer.close_session(self)
             return None
 
     def send_message(self, message):
@@ -84,8 +80,12 @@ class Session(object):
             s.send(message.to_bytes())
             s.close()
         except Exception as e:
-            print(peer, e)
+            print(self.peer, e)
             return None
+
+    def __eq__(self, other):
+        return (self.torrent == other.torrent and
+                self.peer == other.peer)
 
 
 if __name__ == '__main__':
@@ -96,7 +96,7 @@ if __name__ == '__main__':
             t = Torrent(decode(f.read()))
             print("processing: ", t)
             for tracker in t.trackers:
-                trk = Tracker(tracker, t, Session.generate_peer_id())
+                trk = Tracker(tracker, t, generate_peer_id())
                 print(trk)
                 peers = trk.get_peers()
                 for peer in peers:

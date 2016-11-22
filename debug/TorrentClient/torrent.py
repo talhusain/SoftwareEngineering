@@ -74,6 +74,9 @@ class Torrent(object):
         ''' Torrents are considered equal if their info_hashes are the same'''
         return self.info_hash == other.info_hash
 
+    def __hash__(self):
+        return hash(self.info_hash)
+
     def __str__(self):
         return self.name
 
