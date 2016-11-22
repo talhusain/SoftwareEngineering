@@ -1,4 +1,32 @@
 from struct import pack, unpack
+from queue import Queue
+
+
+class MessageQueue(Queue):
+    def __init__(self):
+        Queue.__init__(self)
+
+    def get_message(self):
+        ''' Return the message at the fron of the queue. '''
+        length = self.peek_length()
+        if length and length + 4 >= self.qsize():
+            msg = bytearray()
+            for _ in range(length + 4):
+                msg.append(self.get())
+            print(msg)
+            return Message.get_message_from_bytes(msg)
+        else:
+            return None
+
+    def peek_length(self):
+        ''' Return the length of the message at the front of the queue.
+        Useful when determining if a full message can be pulled.'''
+        if self.qsize() < 4:
+            return None
+        return (self.queue[0] +
+                self.queue[1] +
+                self.queue[2] +
+                self.queue[3])
 
 
 class Message(object):
