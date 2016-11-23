@@ -14,7 +14,6 @@ class MessageQueue(Queue):
             msg = bytearray()
             for _ in range(length + 4):
                 msg.append(self.get())
-            print(msg)
             return Message.get_message_from_bytes(msg)
         else:
             return None
@@ -103,7 +102,8 @@ class Message(object):
             index = unpack('!l', payload[5:])[0]
             return Have(index)
         elif msg_id == 5:
-            raise Exception('Not Implemented')
+            bitfield = payload[5:]
+            return BitField(bitfield)
         elif msg_id == 6:
             index = int(unpack('!l', payload[5:9])[0])
             begin = int(unpack('!l', payload[9:13])[0])
@@ -213,8 +213,39 @@ class Have(Message):
 
 
 class BitField(Message):
-    def __init__(self, payload):
-        raise Exception('Not Implemented')
+    '''bitfield: <len=0001+X><id=5><bitfield>
+
+    The bitfield message may only be sent immediately after the
+    handshaking sequence is completed, and before any other messages are
+    sent. It is optional, and need not be sent if a client has no
+    pieces.
+
+    The bitfield message is variable length, where X is the length of
+    the bitfield. The payload is a bitfield representing the pieces
+    that have been successfully downloaded. The high bit in the first
+    byte corresponds to piece index 0. Bits that are cleared indicated a
+    missing piece, and set bits indicate a valid and available piece.
+    Spare bits at the end are set to zero.
+
+    Some clients (Deluge for example) send bitfield with missing pieces
+    even if it has all data. Then it sends rest of pieces as have
+    messages. They are saying this helps against ISP filtering of
+    BitTorrent protocol. It is called lazy bitfield.
+
+    A bitfield of the wrong length is considered an error. Clients
+    should drop the connection if they receive bitfields that are not of
+    the correct size, or if the bitfield has any of the spare bits set.
+    '''
+    def __init__(self, bitfield):
+        self.length = 1 + len(bitfield)
+        self.id = 5
+        self.bitfield = bitfield
+
+    def to_bytes(self):
+        r = super(BitField, self).to_bytes()
+        for byte in self.bitfield:
+            r += pack('!c', bytes([byte]))
+        return r
 
 
 class Request(Message):
@@ -319,7 +350,7 @@ class Port(Message):
 if __name__ == '__main__':
     m0 = Message.get_message('keep-alive')
     print(m0.to_bytes())
-    m1 = Message.get_message('piece', index=0, begin=0, block=b'asdf')
+    m1 = Message.get_message('bitfield', bitfield=b'asdf')
     m2 = Message.get_message('piece', index=0, begin=0, block=b'asdf')
     print(m1.to_bytes())
-    print(type(Message.get_message_from_bytes(m1.to_bytes())).__name__)
+    print(Message.get_message_from_bytes(m1.to_bytes()).to_bytes())
