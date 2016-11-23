@@ -410,7 +410,9 @@ body .container.body .right_col {
 
 .container {
   width: 100%;
-  padding: 0; }
+/*  padding: 1; */
+  padding-right: 350px;
+  padding-left: 350px;}
 
 .navbar-nav > li > a, .navbar-brand, .navbar-nav > li > a {
   color: #fff !important; }

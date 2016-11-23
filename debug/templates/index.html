@@ -104,53 +104,28 @@
                     <div class="clearfix"></div>
                   </div>
                   <div class="x_content">
-
                     <table class="table table-striped">
                       <thead>
                         <tr>
                           <th>#</th>
-                          <th>First Name</th>
-                          <th>Last Name</th>
-                          <th>Username</th>
+                          <th>name</th>
                           <th></th>
                         </tr>
                       </thead>
                       <tbody>
+                        {% for torrent in torrents %}
                         <tr>
-                          <th scope="row">1</th>
-                          <td>Mark</td>
-                          <td>Otto</td>
-                          <td>@mdo</td>
+                          <th scope="row">{{loop.index}}</th>
+                          <td>{{ torrent[1] }}</td>
                           <td><button type="submit" class="btn-xs btn-success">Queue Download</button></td>
                         </tr>
-                        <tr>
-                          <th scope="row">2</th>
-                          <td>Jacob</td>
-                          <td>Thornton</td>
-                          <td>@fat</td>
-                          <td><button type="submit" class="btn-xs btn-success">Queue Download</button></td>
-                        </tr>
-                        <tr>
-                          <th scope="row">3</th>
-                          <td>Larry</td>
-                          <td>the Bird</td>
-                          <td>@twitter</td>
-                          <td><button type="submit" class="btn-xs btn-success">Queue Download</button></td>
-                        </tr>
+                        {% endfor %}
                       </tbody>
                     </table>
                   </div>
                 </div>
               </div>
-        <!-- /page content -->
-
-        <!-- footer content -->
-        <footer>
-          <div class="pull-right">
-          </div>
-          <div class="clearfix"></div>
-        </footer>
-        <!-- /footer content -->
+              <div class="clearfix"></div>
       </div>
     </div>
 

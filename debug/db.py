@@ -118,9 +118,9 @@ class Database(object):
         connection = self.get_connection()
         cursor = connection.cursor()
         try:
-            cursor.execute(("SELECT %s FROM torrents ORDER BY "
+            cursor.execute(("SELECT " + crit + " FROM torrents ORDER BY "
                             "creation_time DESC limit %s"),
-                           (crit, str(number)))
+                           (number,))
             ret = cursor.fetchall()
         except psycopg2.ProgrammingError as e:
             print(e)
