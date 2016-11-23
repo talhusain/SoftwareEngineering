@@ -70,7 +70,7 @@ class Session(object):
                     self.message_queue.put(byte)
                 msg = self.message_queue.get_message()
                 if msg:
-                    print('got msg %s' % msg.to_bytes())
+                    print('got msg %s from %s' % (msg, self.peer[0]))
             except Exception as e:
                 print(self.peer, e)
 
