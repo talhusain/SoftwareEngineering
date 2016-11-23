@@ -64,6 +64,7 @@ class Session(object):
             try:
                 data = self.socket_recv.recv(2**14 + 32)
                 for byte in data:
+                    print('%s sent byte %s' % (self.peer[0], byte))
                     self.message_queue.put(byte)
                 msg = self.message_queue.get_message()
                 if msg:
