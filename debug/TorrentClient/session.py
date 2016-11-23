@@ -54,6 +54,8 @@ class Session(object):
             data = self.socket_recv.recv(len(handshake))
             if len(data) == len(handshake):
                 return data
+            else:
+                self.observer.close_session(self)
         except Exception as e:
             print(self.peer, e)
             self.observer.close_session(self)
@@ -64,7 +66,7 @@ class Session(object):
             try:
                 data = self.socket_recv.recv(2**14 + 32)
                 for byte in data:
-                    print('%s sent byte %s' % (self.peer[0], byte))
+                    # print('%s sent byte %s' % (self.peer[0], byte))
                     self.message_queue.put(byte)
                 msg = self.message_queue.get_message()
                 if msg:
