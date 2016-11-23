@@ -55,7 +55,8 @@ class Torrent(object):
             self.files.append({'path': path, 'length': length})
         else:
             for file in self._torrent_dict[b'info'][b'files']:
-                path = [path.decode('utf-8') for path in file[b'path']]
+                print(file)
+                path = file[b'path'].decode("utf-8")
                 self.files.append({'path': os.path.join(*path),
                                    'length': file[b'length']})
 
@@ -71,7 +72,8 @@ class Torrent(object):
         return self.comment
 
     def __str__(self):
-        return self.name
+        return "Name: " + self.name + "\n" + \
+               "Trackers: " + str(self.trackers[0]) + "\n"
 
     def __enter__(self):
         pass

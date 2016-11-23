@@ -6,12 +6,11 @@ and pass the connection to objects that use it.
 import configparser
 import psycopg2
 import os
-from bencoding.bencode import decode
-from torrent import Torrent
 import datetime
+from bencoding.bencode import encode, decode
+from torrent import Torrent
 
 DEBUG = True
-
 
 class Database(object):
     '''
@@ -33,22 +32,9 @@ class Database(object):
         self.db_name = config['DATABASE']['db']
 
         # Establish connection object initialize tables
-        # self._drop_all_tables()
         self._initialize_tables()
-        # self.add_fake_plugin()
-        # self.remove_plugin("https://github.com/BadStreff/slothtorrent_yts")
         # self._add_fake_torrents()
         # self._add_sample_torrents()
-        self._connection.close()
-
-    def _drop_all_tables(self):
-        self._connection = self.get_connection()
-        cursor = self._connection.cursor()
-        cursor.execute(("DROP TABLE IF EXISTS torrents, "
-                        "plugins, "
-                        "announcers, "
-                        "torrent_files"))
-        self._connection.commit()
         self._connection.close()
 
     def _initialize_tables(self):
@@ -64,23 +50,20 @@ class Database(object):
                        "creation_time TIMESTAMP,"
                        "piece_length INT,"
                        "pieces BYTEA,"
-                       "provider TEXT REFERENCES plugins (url) "
-                       "ON UPDATE CASCADE ON DELETE CASCADE)")
+                       "provider TEXT REFERENCES plugins (url))")
         cursor.execute("CREATE TABLE IF NOT EXISTS announcers "
                        "(url TEXT,"
-                       "info_hash BYTEA REFERENCES torrents (info_hash) "
-                       "ON UPDATE CASCADE ON DELETE CASCADE,"
+                       "info_hash BYTEA REFERENCES torrents (info_hash),"
                        "PRIMARY KEY (url, info_hash))")
         cursor.execute("CREATE TABLE IF NOT EXISTS torrent_files "
                        "(file_path TEXT,"
                        "length TEXT,"
-                       "info_hash BYTEA REFERENCES torrents (info_hash) "
-                       "ON UPDATE CASCADE ON DELETE CASCADE,"
+                       "info_hash BYTEA REFERENCES torrents (info_hash),"
                        "PRIMARY KEY (file_path, info_hash))")
         self._connection.commit()
         self._connection.close()
 
-    def add_fake_plugin(self):
+    def _add_fake_torrents(self):
         self._connection = self.get_connection()
         cursor = self._connection.cursor()
         dt = datetime.datetime.now()
@@ -92,6 +75,61 @@ class Database(object):
                         "(%s, %s) "
                         "ON CONFLICT (url) DO NOTHING"),
                        ('https://github.com/BadStreff/slothtorrent_yts', dt))
+        cursor.execute(("INSERT INTO torrents VALUES "
+                        "(%s, %s, %s, %s, %s, %s, %s, %s) "
+                        "ON CONFLICT (info_hash) DO NOTHING"),
+                       (b'0000',
+                        'sample0',
+                        'sample comment',
+                        'sample creator',
+                        dt,
+                        0,
+                        b'0000',
+                        'None'))
+        cursor.execute(("INSERT INTO torrents VALUES "
+                        "(%s, %s, %s, %s, %s, %s, %s, %s) "
+                        "ON CONFLICT (info_hash) DO NOTHING"),
+                       (b'0001',
+                        'sample1',
+                        'sample comment',
+                        'sample creator',
+                        dt,
+                        0,
+                        b'0000',
+                        'None'))
+        cursor.execute(("INSERT INTO torrents VALUES "
+                        "(%s, %s, %s, %s, %s, %s, %s, %s) "
+                        "ON CONFLICT (info_hash) DO NOTHING"),
+                       (b'0002',
+                        'sample2',
+                        'sample comment',
+                        'sample creator',
+                        dt,
+                        0,
+                        b'0000',
+                        'None'))
+        cursor.execute(("INSERT INTO torrents VALUES "
+                        "(%s, %s, %s, %s, %s, %s, %s, %s) "
+                        "ON CONFLICT (info_hash) DO NOTHING"),
+                       (b'0003',
+                        'sample4',
+                        'sample comment',
+                        'sample creator',
+                        dt,
+                        0,
+                        b'0000',
+                        'None'))
+        cursor.execute(("INSERT INTO torrents VALUES "
+                        "(%s, %s, %s, %s, %s, %s, %s, %s) "
+                        "ON CONFLICT (info_hash) DO NOTHING"),
+                       (b'0005',
+                        'sample5',
+                        'sample comment',
+                        'sample creator',
+                        dt,
+                        0,
+                        b'0000',
+                        'None'))
         self._connection.commit()
         self._connection.close()
 
@@ -103,30 +141,18 @@ class Database(object):
                 torrent = Torrent(torrent_dict)
                 self.import_torrent(torrent, 'None')
 
-    def get_recent_torrents(self, number=10):
+    def get_recent_torrents(self, number):
         """Returns a list of the most recently added torrents. If the
         number exceeds the total number of torrents in the database all
         torrents will be returned.
-        ex SELECT * FROM News ORDER BY date DESC
+
         Args:
             number (int): The maximum number of torrents to return
 
         Returns:
             list: A list of Torrent objects
         """
-        crit = 'info_hash,name,comment,created_by,creation_time,provider'
-        connection = self.get_connection()
-        cursor = connection.cursor()
-        try:
-            cursor.execute(("SELECT %s FROM torrents ORDER BY "
-                            "creation_time DESC limit %s"),
-                           (crit, str(number)))
-            ret = cursor.fetchall()
-        except psycopg2.ProgrammingError as e:
-            print(e)
-            connection.rollback()
-            ret = []
-        return ret
+        pass
 
     def get_popular_torrents(self, number):
         """Returns torrents with the most seeders. If the number exceeds
@@ -151,6 +177,8 @@ class Database(object):
         Returns:
             list: A list of Torrent objects
         """
+
+        
         pass
 
     def import_torrent(self, torrent, provider):
@@ -212,31 +240,106 @@ class Database(object):
         Returns:
             Torrent: see torrent.py for more information
         """
-        pass
+        
+        connection = self.get_connection()
+        cursor = connection.cursor()
+        
+        SQL = "SELECT * FROM torrent_files WHERE info_hash = (%s);"
+        try:
+            cursor.execute(SQL, info_hash)
+            torrent_files = cursor.fetchone()
+        except psycopg2.ProgrammingError as e:
+            print(e)
+            return None
 
-    def add_plugin(self, url):
+        SQL = "SELECT * FROM torrents WHERE info_hash = (%s);"
+        try:
+            cursor.execute(SQL, info_hash)
+            tup = cursor.fetchone()
+        except psycopg2.ProgrammingError as e:
+            print(e)
+            return None
+
+        SQL = "SELECT file_path, length FROM torrent_files WHERE info_hash = (%s);"
+        try:
+            cursor.execute(SQL, info_hash)
+            file_path, length = cursor.fetchone()
+        except psycopg2.ProgrammingError as e:
+            print(e)
+            return None
+
+        SQL = "SELECT url FROM announcers WHERE info_hash = (%s);"
+        try:
+            cursor.execute(SQL, info_hash)
+            announcer = cursor.fetchone()
+        except psycopg2.ProgrammingError as e:
+            print(e)
+            return None
+
+        torrent = {}
+        torrent[b'info hash'] = bytes(info_hash[0])
+        torrent[b'name'] = tup[1].encode("utf-8")       
+        torrent[b'comment'] = tup[2].encode("utf-8")
+        torrent[b'created by'] = tup[3].encode("utf-8")
+        torrent[b'creation time'] = tup[4]
+        torrent[b'piece length'] = length.encode("utf-8")
+        torrent[b'pieces'] = bytes(tup[6])
+        torrent[b'info'] = { 
+                             b'name': tup[1].encode("utf-8"),
+                             b'piece length': bytes(tup[5]),
+                             b'pieces': bytes(tup[6]),
+                             b'files': [
+                                        { b'path': file_path.encode("utf-8"),
+                                          b'length': length.encode("utf-8") }
+                                       ]
+                           }
+        announcer_urls = announcer[0]  # Either a str or a list of lists of strings
+        if (isinstance(announcer_urls, str)):
+            torrent[b'announce'] = announcer_urls.encode("utf-8")
+        elif (isinstance(announcer_urls, list)):
+            for trackers in announcer_urls:
+                for tracker in trackers:
+                    tracker.encode("utf-8")
+            torrent[b'announce-list'] = announcer_urls
+
+        connection.close()
+        cursor.close()
+        
+        return Torrent(torrent)
+
+    def add_plugin(self, url, last_run):
         """Add a plugin URL to the database
-
         Args:
             url (string): Full patch a .git repo that is the plugin
+        Returns:
+            BOOL: success or failure
+        """
+        print("\nIn add_plugin()...\n\n")
+        connection = self.get_connection()
+        cursor = connection.cursor()
+        try:
+            cursor.execute( ("INSERT INTO plugins VALUES (%s, %s) "
+                             "ON CONFLICT (url) DO NOTHING"),
+                             (url, last_run) )
+        except psycopg2.ProgrammingError as e:
+            print(e)
+            return False
+        connection.commit()
+        cursor.close()
+        connection.close()
+        return True
+
+    def remove_plugin(self, url):
+        """Remove a plugin from the database
+
+        Args:
+            url (string): Removes the specified plugin url from the
+            database
 
         Returns:
             BOOL: success or failure
         """
         pass
-
-    def remove_plugin(self, url):
-        connection = self.get_connection()
-        cursor = connection.cursor()
-        try:
-            cursor.execute("DELETE FROM plugins WHERE url = %s", (url,))
-
-        except psycopg2.ProgrammingError as e:
-            print(e)
-            return False
-        connection.commit()
-        connection.close()
-        return True
 
     def get_all_plugins(self):
         connection = self.get_connection()
@@ -247,7 +350,6 @@ class Database(object):
         except psycopg2.ProgrammingError as e:
             print(e)
         connection.close()
-        return []
 
     def get_connection(self):
         return psycopg2.connect(user=self.username,
