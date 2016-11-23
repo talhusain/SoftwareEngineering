@@ -56,7 +56,7 @@ class Session(object):
                 data = self.socket_recv.recv(2**14 + 32)
                 for byte in data:
                     print('got byte %s' % byte)
-                    self.message_queue.append(byte)
+                    self.message_queue.put(byte)
             except Exception as e:
                 print(self.peer, e)
 
