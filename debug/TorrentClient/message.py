@@ -10,7 +10,7 @@ class MessageQueue(Queue):
         ''' Return the message at the front of the queue, or None if
         if there is not a complete message. '''
         length = self.peek_length()
-        if length and length + 4 >= self.qsize():
+        if length and length + 4 <= self.qsize():
             msg = bytearray()
             for _ in range(length + 4):
                 msg.append(self.get())
@@ -348,9 +348,15 @@ class Port(Message):
 
 
 if __name__ == '__main__':
+    msg_queue = MessageQueue()
     m0 = Message.get_message('keep-alive')
     print(m0.to_bytes())
     m1 = Message.get_message('bitfield', bitfield=b'asdf')
-    m2 = Message.get_message('piece', index=0, begin=0, block=b'asdf')
     print(m1.to_bytes())
-    print(Message.get_message_from_bytes(m1.to_bytes()).to_bytes())
+    for _ in range(5):
+        for byte in m1.to_bytes():
+            print(byte)
+            msg_queue.put(byte)
+    print(msg_queue.queue)
+    print(msg_queue.get_message())
+    print(msg_queue.queue)
