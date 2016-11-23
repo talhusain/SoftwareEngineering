@@ -6,6 +6,7 @@ from util import generate_peer_id
 class Client(object):
     def __init__(self, download_location=None):
         self._sessions = {}  # 'torrent: [session1, session2]'
+        self._torrent_status = {}  # '{torrent: status...}'
         if download_location is None:
             self.download_location = 'torrent_downloads/'
         else:
@@ -18,8 +19,8 @@ class Client(object):
                     session = Session(peer, torrent, self.download_location)
                     session.register_observer(self)
                     if torrent not in self._sessions:
-                        self._sessions[torrent] = []
-                    self._sessions[torrent].append(session)
+                        self._sessions[torrent.name] = []
+                    self._sessions[torrent.name].append(session)
                     session.send_recv_handshake()
 
     def start_from_file(self, path):
@@ -47,16 +48,21 @@ class Client(object):
         return self.sessions
 
     def close_session(self, session):
-        self._sessions[session.torrent].remove(session)
+        self._sessions[session.torrent.name].remove(session)
 
 
 if __name__ == '__main__':
+    # for temporary debugging
+    import pprint
     from os import listdir
     from torrent import Torrent
     from bencoding import decode
+    pp = pprint.PrettyPrinter(indent=2)
     torrent_client = Client()
     for file in listdir('sample_torrents'):
         with open('sample_torrents/' + file, 'rb') as f:
             t = Torrent(decode(f.read()))
             torrent_client.start(t)
-    print(torrent_client._sessions)
+
+    print('overview of active torrents per session: ')
+    pp.pprint(torrent_client._sessions)
