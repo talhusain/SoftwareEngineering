@@ -7,7 +7,7 @@ class MessageQueue(Queue):
         Queue.__init__(self)
 
     def get_message(self):
-        ''' Return the message at the fron of the queue. '''
+        ''' Return the message at the front of the queue. '''
         length = self.peek_length()
         if length and length + 4 >= self.qsize():
             msg = bytearray()

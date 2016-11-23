@@ -3,6 +3,7 @@ from tracker import Tracker
 from util import generate_peer_id
 from message import *
 import socket
+import threading
 from struct import pack
 
 
@@ -19,6 +20,14 @@ class Session(object):
 
     def register_observer(self, observer):
         self.observer = observer
+
+    def kickstart(self):
+        '''Send the handshake and spawn a thread to start monitoring
+        incoming messages.
+        '''
+        data = self.send_recv_handshake()
+        if data:
+            threading.Thread(target=self.process_incoming_messages).start()
 
     def generate_handshake(self):
         """ Returns a handshake. """
@@ -55,8 +64,15 @@ class Session(object):
             try:
                 data = self.socket_recv.recv(2**14 + 32)
                 for byte in data:
-                    print('got byte %s' % byte)
+                    print('%s sent byte %s' % (self.peer[0], byte))
                     self.message_queue.put(byte)
+                msg = None
+                try:
+                    msg = self.message_queue.get_message()
+                except:
+                    pass
+                if msg:
+                    print('got msg %s' % msg.to_bytes())
             except Exception as e:
                 print(self.peer, e)
 

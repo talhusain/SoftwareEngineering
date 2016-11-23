@@ -21,9 +21,7 @@ class Client(object):
                     if torrent not in self._sessions:
                         self._sessions[torrent.name] = []
                     self._sessions[torrent.name].append(session)
-                    r = session.send_recv_handshake()
-                    if r:
-                        session.process_incoming_messages()
+                    session.kickstart()
 
     def start_from_file(self, path):
         pass
