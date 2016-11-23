@@ -4,13 +4,6 @@ from util import generate_peer_id
 from message import *
 import socket
 from struct import pack
-from enum import Enum
-
-
-class Status(Enum):
-    paused = 1
-    downloading = 2
-    seeding = 3
 
 
 class Session(object):
@@ -21,21 +14,22 @@ class Session(object):
         self.status = Status.downloading
         self.peer_id = generate_peer_id()
         self.observer = None
+        self.choked = False
 
     def register_observer(self, observer):
         self.observer = observer
 
-    def start(self):
-        self.status = Status.downloading
-
-    def pause(self):
-        self.status = Status.paused
-
-    def resume(self):
-        self.status = Status.downloading
-
-    def cancel(self):
-        pass
+#    def start(self):
+#        self.status = Status.downloading
+#
+#    def pause(self):
+#        self.status = Status.paused
+#
+#    def resume(self):
+#        self.status = Status.downloading
+#
+#    def cancel(self):
+#        pass
 
     def generate_handshake(self):
         """ Returns a handshake. """

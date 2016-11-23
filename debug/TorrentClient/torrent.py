@@ -2,19 +2,54 @@ from bencoding import encode, decode
 from datetime import datetime as dt
 from hashlib import sha1
 import os
+from enum import Enum
+
+
+class Status(Enum):
+    paused = 1
+    downloading = 2
+    seeding = 3
+    choked = 4
 
 
 class Torrent(object):
 
-    def __init__(self, torrent_dict):
-        """Constructs a torrent objects from a decoded torrent
-           dictionary.
+    def __init__(self,
+                 torrent_dict,
+                 status=Status.paused,
+                 root_path=None):
+
+        self._status = status
+        if root_path is None:
+            self._root_path = os.getcwd()
+        else:
+            self._root_path = root_path
+
+        # populate torrent variables
+        self.parse_torrent_dict(torrent_dict)
+
+    # needs refactored per @squidmin's suggestions, may require
+    # changes to existing code since this is such a widely used object.
+    def parse_torrent_dict(self, torrent_dict):
+        '''Constructs a torrent objects from a decoded torrent
+           dictionary, populates the following member variables.
+           files [{path: path(str), length: length(int)}...]
+           trackers [url(str)...]
+           length (int)
+           comment (str) (optional)
+           created_by (str) (optional)
+           creation_date (datetime.datetime) (optional)
+           encoding (str) (optional)
+           name (str)
+           piece_length (int)
+           pieces (bytes)
+           info_hash (bytes)
 
         Args:
             torrent_dict (dict): Decoded torrent file, all strings are
             expected to b byte strings and will be decoded into regular
             strings.
-        """
+        '''
         self.files = []
         self.trackers = []
         self._torrent_dict = torrent_dict
@@ -67,8 +102,15 @@ class Torrent(object):
         elif b'announce' in self._torrent_dict:
             self.trackers.append(self._torrent_dict[b'announce'])
 
-    def get_comment(self):
-        return self.comment
+    @property
+    def status(self):
+        return self._status
+
+    @status.setter
+    def status(self, value):
+        if value not in Status.__members__:
+            raise ValueError('Unknown status \'%s\'' % value)
+        self._status = value
 
     def __eq__(self, other):
         ''' Torrents are considered equal if their info_hashes are the same'''
@@ -92,4 +134,5 @@ if __name__ == '__main__':
         with open('sample_torrents/' + file, 'rb') as f:
             torrent_dict = decode(f.read())
             torrent = Torrent(torrent_dict)
+            torrent.status = False
             print(torrent)
