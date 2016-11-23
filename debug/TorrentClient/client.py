@@ -19,8 +19,8 @@ class Client(object):
                     session = Session(peer, torrent)
                     session.register_observer(self)
                     if torrent not in self._sessions:
-                        self._sessions[torrent.name] = []
-                    self._sessions[torrent.name].append(session)
+                        self._sessions[torrent] = []
+                    self._sessions[torrent].append(session)
                     session.kickstart()
 
     def start_from_file(self, path):
@@ -48,7 +48,7 @@ class Client(object):
         return self.sessions
 
     def close_session(self, session):
-        self._sessions[session.torrent.name].remove(session)
+        self._sessions[session.torrent].remove(session)
 
 
 if __name__ == '__main__':

@@ -64,13 +64,8 @@ class Session(object):
             try:
                 data = self.socket_recv.recv(2**14 + 32)
                 for byte in data:
-                    print('%s sent byte %s' % (self.peer[0], byte))
                     self.message_queue.put(byte)
-                msg = None
-                try:
-                    msg = self.message_queue.get_message()
-                except:
-                    pass
+                msg = self.message_queue.get_message()
                 if msg:
                     print('got msg %s' % msg.to_bytes())
             except Exception as e:
@@ -86,7 +81,7 @@ class Session(object):
                 self.socket_send.connect(self.peer)
             except Exception as e:
                 print(self.peer, e)
-                self.observer.close_session(self)
+                # self.observer.close_session(self)
                 return
         try:
             self.socket_send.send(message.to_bytes())
