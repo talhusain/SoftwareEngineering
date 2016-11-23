@@ -15,6 +15,7 @@ class Session(object):
         self.choked = False
         self.socket_recv = None
         self.socket_send = None
+        self.message_queue = Message.MessageQueue()
 
     def register_observer(self, observer):
         self.observer = observer
@@ -54,7 +55,7 @@ class Session(object):
             try:
                 data = self.socket_recv.recv(2**14 + 32)
                 for byte in data:
-                    print('got bytes %s' % byte)
+                    print('got byte %s' % byte)
                     self.message_queue.append(byte)
             except Exception as e:
                 print(self.peer, e)
