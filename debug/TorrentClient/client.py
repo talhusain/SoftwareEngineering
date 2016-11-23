@@ -16,12 +16,14 @@ class Client(object):
         for t in torrent.trackers:
                 tracker = Tracker(t, torrent, generate_peer_id())
                 for peer in tracker.get_peers():
-                    session = Session(peer, torrent, self.download_location)
+                    session = Session(peer, torrent)
                     session.register_observer(self)
                     if torrent not in self._sessions:
                         self._sessions[torrent.name] = []
                     self._sessions[torrent.name].append(session)
-                    session.send_recv_handshake()
+                    r = session.send_recv_handshake()
+                    if r:
+                        session.process_incoming_messages()
 
     def start_from_file(self, path):
         pass
