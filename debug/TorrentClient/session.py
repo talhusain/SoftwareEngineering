@@ -15,7 +15,7 @@ class Session(object):
         self.choked = False
         self.socket_recv = None
         self.socket_send = None
-        self.message_queue = Message.MessageQueue()
+        self.message_queue = MessageQueue()
 
     def register_observer(self, observer):
         self.observer = observer
