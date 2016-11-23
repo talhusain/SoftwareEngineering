@@ -11,25 +11,12 @@ class Session(object):
         self.peer = peer  # of the format tuple(str(ip), int(port))
         self.torrent = torrent
         self.location = location
-        self.status = Status.downloading
         self.peer_id = generate_peer_id()
         self.observer = None
         self.choked = False
 
     def register_observer(self, observer):
         self.observer = observer
-
-#    def start(self):
-#        self.status = Status.downloading
-#
-#    def pause(self):
-#        self.status = Status.paused
-#
-#    def resume(self):
-#        self.status = Status.downloading
-#
-#    def cancel(self):
-#        pass
 
     def generate_handshake(self):
         """ Returns a handshake. """
