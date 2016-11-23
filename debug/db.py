@@ -6,12 +6,11 @@ and pass the connection to objects that use it.
 import configparser
 import psycopg2
 import os
-from bencoding.bencode import decode
-from torrent import Torrent
 import datetime
+from bencoding.bencode import encode, decode
+from torrent import Torrent
 
 DEBUG = True
-
 
 class Database(object):
     '''
@@ -240,75 +239,92 @@ class Database(object):
             Torrent: see torrent.py for more information
         """
         
-        """
-        info_hash BYTEA PRIMARY KEY,
-        name TEXT,
-        comment TEXT,
-        created_by TEXT,
-        creation_time TIMESTAMP,
-        piece_length INT,
-        pieces BYTEA
-        """
+        connection = self.get_connection()
+        cursor = connection.cursor()
         
-        cursor = self._connection.cursor()
+        SQL = "SELECT * FROM torrent_files WHERE info_hash = (%s);"
         try:
-            cursor.execute( ("SELECT * FROM torrents WHERE info_hash = 'asdfasdf'") )
+            cursor.execute(SQL, info_hash)
+            torrent_files = cursor.fetchone()
+        except psycopg2.ProgrammingError as e:
+            print(e)
+            return None
+
+        SQL = "SELECT * FROM torrents WHERE info_hash = (%s);"
+        try:
+            cursor.execute(SQL, info_hash)
             tup = cursor.fetchone()
         except psycopg2.ProgrammingError as e:
             print(e)
             return None
-        cursor.close()
-        
-        info_hash = bytes(tup[0])
-        name = tup[1]
-        comment = tup[2]
-        created_by = tup[3]
-        creation_time = tup[4]
-        piece_length = tup[5]
-        pieces = bytes(tup[6])
+
+        SQL = "SELECT file_path, length FROM torrent_files WHERE info_hash = (%s);"
+        try:
+            cursor.execute(SQL, info_hash)
+            file_path, length = cursor.fetchone()
+        except psycopg2.ProgrammingError as e:
+            print(e)
+            return None
+
+        SQL = "SELECT url FROM announcers WHERE info_hash = (%s);"
+        try:
+            cursor.execute(SQL, info_hash)
+            announcer = cursor.fetchone()
+        except psycopg2.ProgrammingError as e:
+            print(e)
+            return None
 
         torrent = {}
-        torrent[b'info hash'] = info_hash
-        torrent[b'name'] = str.encode(name)
-        torrent[b'comment'] = str.encode(comment)
-        torrent[b'created by'] = str.encode(created_by)
-        torrent[b'creation time'] = creation_time
-        torrent[b'piece length'] = piece_length
-        torrent[b'pieces'] = pieces
-        torrent[b'files'] = []
+        torrent[b'info hash'] = bytes(info_hash[0])
+        torrent[b'name'] = tup[1].encode("utf-8")       
+        torrent[b'comment'] = tup[2].encode("utf-8")
+        torrent[b'created by'] = tup[3].encode("utf-8")
+        torrent[b'creation time'] = tup[4]
+        torrent[b'piece length'] = length.encode("utf-8")
+        torrent[b'pieces'] = bytes(tup[6])
         torrent[b'info'] = { 
-                             b'name': str.encode(name),
-                             b'piece length': piece_length,
-                             b'pieces': pieces,
+                             b'name': tup[1].encode("utf-8"),
+                             b'piece length': bytes(tup[5]),
+                             b'pieces': bytes(tup[6]),
                              b'files': [
-                                        { b'path': [ str.encode('a'), 
-                                                     str.encode('fake'), 
-                                                     str.encode('path') ] },
-                                        { b'length': 43 }
+                                        { b'path': file_path.encode("utf-8"),
+                                          b'length': length.encode("utf-8") }
                                        ]
                            }
+        announcer_urls = announcer[0]  # Either a str or a list of lists of strings
+        if (isinstance(announcer_urls, str)):
+            torrent[b'announce'] = announcer_urls.encode("utf-8")
+        elif (isinstance(announcer_urls, list)):
+            for trackers in announcer_urls:
+                for tracker in trackers:
+                    tracker.encode("utf-8")
+            torrent[b'announce-list'] = announcer_urls
 
+        connection.close()
+        cursor.close()
+        
         return Torrent(torrent)
 
-    def add_plugin(self, url):
+    def add_plugin(self, url, last_run):
         """Add a plugin URL to the database
-        Args:
-            url (string): Full patch a .git repo that is the plugin
         Args:
             url (string): Full patch a .git repo that is the plugin
         Returns:
             BOOL: success or failure
         """
-        
-        cursor = self._connection.cursor()
+        print("\nIn add_plugin()...\n\n")
+        connection = self.get_connection()
+        cursor = connection.cursor()
         try:
-            cursor.execute( ("INSERT INTO plugins VALUES (%s, %s, %s) "
-                             "ON CONFLICT (id) DO NOTHING"),
-                             ('001', 'some/url/and/some/goats.txt', datetime.datetime.now()) )
+            cursor.execute( ("INSERT INTO plugins VALUES (%s, %s) "
+                             "ON CONFLICT (url) DO NOTHING"),
+                             (url, last_run) )
         except psycopg2.ProgrammingError as e:
             print(e)
             return False
+        connection.commit()
         cursor.close()
+        connection.close()
         return True
 
     def remove_plugin(self, url):
@@ -332,6 +348,7 @@ class Database(object):
         except psycopg2.ProgrammingError as e:
         	print(e)
         connection.close()
+
     def get_connection(self):
         return psycopg2.connect(user=self.username,
                                 password=self.password,
