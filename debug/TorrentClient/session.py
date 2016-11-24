@@ -27,12 +27,22 @@ class Session(object):
 
     def kickstart(self):
         '''Send the handshake and spawn a thread to start monitoring
-        incoming messages.
+        incoming messages, also spawn a thread to send the keep-alive
+        message every minute.
         '''
         data = self.send_recv_handshake()
         if data:
-            threading.Thread(target=self.process_incoming_messages).start()
+            # start processing messages from the peer if the handshake
+            # was successful
+            incoming_thread = threading.Thread(target=self.process_incoming_messages).start()
+            # send our interested message to let it know we would like
+            #to be unchoked
             self.send_message(Message.get_message('interested'))
+            # schedule the keep-alive, in the future this will need
+            # refactored to close the session on failure, but for now
+            # brute force is good enough
+            keepalive = Message.get_message('keep-alive')
+            threading.Timer(60, self.send_message(keepalive)).start()
 
     def generate_handshake(self):
         """ Returns a handshake. """
@@ -82,7 +92,9 @@ class Session(object):
                 if msg:
                     print('got msg %s from %s' % (msg, self.peer[0]))
                 if isinstance(msg, UnChoke):
-                    print('GOT UNCHOKE MESSAGE!! WOOOO!!!')
+                    self.choked = False
+                elif isinstance(msg, Choke):
+                    self.choked = True
             except Exception as e:
                 # ignore time outs
                 if str(e) == 'timed out':
@@ -97,13 +109,23 @@ class Session(object):
 
     def send_message(self, message):
         """ Sends a message """
-        print('sending message...')
+        # We should only send interested and keep-alive messages if
+        # choked
+        if self.choked and not (isinstance(message, Interested) or
+                                isinstance(message, KeepAlive)):
+            print('client is in a choked state, canceling send for %s' % message)
+            return
+        print('sending message %s' % message)
         try:
             self.lock.acquire()
             print('lock acquired by send_message()')
             self.socket.send(message.to_bytes())
         except Exception as e:
-            print(self.peer, e)
+            if str(e) != 'timed out':
+                print(self.peer, e)
+                print(('Error getting incoming message from %s: %s' %
+                      (self.peer[0], e)))
+                self.observer.close_session(self)
         finally:
             self.lock.release()
             print('lock released')
