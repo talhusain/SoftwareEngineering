@@ -1,5 +1,9 @@
 import unittest
+<<<<<<< HEAD:debug/test_bencode.py
+import bencode
+=======
 from bencode import encode, decode
+>>>>>>> 7f53710bed8128ecbb99c37ebd94066da5b8aac9:debug/bencoding/test_bencode.py
 
 class TestEncode(unittest.TestCase):
 

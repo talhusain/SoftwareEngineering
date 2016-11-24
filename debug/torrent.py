@@ -1,12 +1,7 @@
-"""
-FILE: torrent.py
-CLASS PROVIDED: Torrent
-"""
-from bencoding.bencode import encode, decode
+from bencode import encode, decode
 from datetime import datetime as dt
 from hashlib import sha1
 import os
-
 
 class Torrent(object):
 
@@ -86,3 +81,5 @@ if __name__ == '__main__':
             torrent_dict = decode(f.read())
             torrent = Torrent(torrent_dict)
             print(torrent)
+            
+    data = None
