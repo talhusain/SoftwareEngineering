@@ -352,11 +352,10 @@ if __name__ == '__main__':
     m0 = Message.get_message('keep-alive')
     print(m0.to_bytes())
     m1 = Message.get_message('bitfield', bitfield=b'asdf')
-    print(m1.to_bytes())
-    for _ in range(5):
-        for byte in m1.to_bytes():
-            print(byte)
-            msg_queue.put(byte)
-    print(msg_queue.queue)
-    print(msg_queue.get_message())
-    print(msg_queue.queue)
+    # for _ in range(5):
+    #     for byte in m1.to_bytes():
+    #         print(byte)
+    #         msg_queue.put(byte)
+    # print(msg_queue.queue)
+    # print(msg_queue.get_message())
+    # print(msg_queue.queue)

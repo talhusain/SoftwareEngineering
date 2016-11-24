@@ -5,6 +5,7 @@ from message import *
 import socket
 import threading
 from struct import pack
+import time
 
 
 class Session(object):
@@ -13,9 +14,12 @@ class Session(object):
         self.torrent = torrent
         self.peer_id = generate_peer_id()
         self.observer = None
-        self.choked = False
-        self.socket_recv = None
-        self.socket_send = None
+        self.choked = True
+        self.recv_socket = None
+        self.recv_thread = None
+        self.send_socket = None
+        self.socket = None
+        self.lock = threading.Lock()
         self.message_queue = MessageQueue()
 
     def register_observer(self, observer):
@@ -28,6 +32,7 @@ class Session(object):
         data = self.send_recv_handshake()
         if data:
             threading.Thread(target=self.process_incoming_messages).start()
+            self.send_message(Message.get_message('interested'))
 
     def generate_handshake(self):
         """ Returns a handshake. """
@@ -41,55 +46,67 @@ class Session(object):
     def send_recv_handshake(self):
         """ Establishes the socket connection and sends the handshake"""
         handshake = self.generate_handshake()
-        self.socket_recv = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
-        self.socket_recv.settimeout(1)
+        self.socket = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
+        self.socket.settimeout(1)
         try:
-            self.socket_recv.connect(self.peer)
+            self.socket.connect(self.peer)
         except Exception as e:
-            print(self.peer, e)
+            if str(e) != 'timed out':
+                print(self.peer, e)
             self.observer.close_session(self)
             return None
         try:
-            self.socket_recv.send(handshake)
-            data = self.socket_recv.recv(len(handshake))
+            self.socket.send(handshake)
+            data = self.socket.recv(len(handshake))
             if len(data) == len(handshake):
+                print('establish connection with %s' % self.peer[0])
                 return data
             else:
                 self.observer.close_session(self)
         except Exception as e:
-            print(self.peer, e)
+            if str(e) != 'timed out':
+                print(self.peer, e)
             self.observer.close_session(self)
             return None
 
     def process_incoming_messages(self):
-        while True:
+        loop = True
+        while loop:
             try:
-                data = self.socket_recv.recv(2**14 + 32)
+                self.lock.acquire()
+                data = self.socket.recv(2**14 + 32)
                 for byte in data:
                     # print('%s sent byte %s' % (self.peer[0], byte))
                     self.message_queue.put(byte)
                 msg = self.message_queue.get_message()
                 if msg:
                     print('got msg %s from %s' % (msg, self.peer[0]))
+                if isinstance(msg, UnChoke):
+                    print('GOT UNCHOKE MESSAGE!! WOOOO!!!')
             except Exception as e:
-                print(self.peer, e)
+                # ignore time outs
+                if str(e) == 'timed out':
+                    continue
+                print(('Error getting incoming message from %s: %s' %
+                      (self.peer[0], e)))
+                self.observer.close_session(self)
+                loop = False
+            finally:
+                self.lock.release()
+                time.sleep(.5)
 
     def send_message(self, message):
         """ Sends a message """
-        if not self.socket_send:
-            self.socket_send = socket.socket(socket.AF_INET,
-                                             socket.SOCK_STREAM)
-            self.socket_send.settimeout(1)
-            try:
-                self.socket_send.connect(self.peer)
-            except Exception as e:
-                print(self.peer, e)
-                # self.observer.close_session(self)
-                return
+        print('sending message...')
         try:
-            self.socket_send.send(message.to_bytes())
+            self.lock.acquire()
+            print('lock acquired by send_message()')
+            self.socket.send(message.to_bytes())
         except Exception as e:
             print(self.peer, e)
+        finally:
+            self.lock.release()
+            print('lock released')
 
     def __eq__(self, other):
         return (self.torrent == other.torrent and

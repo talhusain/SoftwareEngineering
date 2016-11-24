@@ -1,3 +1,4 @@
+from bencoding import decode
 from session import Session
 from tracker import Tracker
 from util import generate_peer_id
@@ -24,7 +25,8 @@ class Client(object):
                     session.kickstart()
 
     def start_from_file(self, path):
-        pass
+        with open(path, 'rb') as f:
+            self.start(Torrent(decode(f.read())))
 
     def pause(self, torrent):
         pass
@@ -47,6 +49,8 @@ class Client(object):
     def get_sessions(self):
         return self.sessions
 
+    # not really ment to be called by the client, but is left public
+    # incase it is usefull
     def close_session(self, session):
         self._sessions[session.torrent].remove(session)
 
@@ -60,9 +64,7 @@ if __name__ == '__main__':
     pp = pprint.PrettyPrinter(indent=2)
     torrent_client = Client()
     for file in listdir('sample_torrents'):
-        with open('sample_torrents/' + file, 'rb') as f:
-            t = Torrent(decode(f.read()))
-            torrent_client.start(t)
+        torrent_client.start_from_file('sample_torrents/' + file)
 
     print('overview of active torrents per session: ')
     pp.pprint(torrent_client._sessions)

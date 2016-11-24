@@ -1,6 +1,7 @@
 from bencoding import encode, decode
 from datetime import datetime as dt
 from hashlib import sha1
+from math import ceil
 import os
 from enum import Enum
 
@@ -134,5 +135,4 @@ if __name__ == '__main__':
         with open('sample_torrents/' + file, 'rb') as f:
             torrent_dict = decode(f.read())
             torrent = Torrent(torrent_dict)
-            torrent.status = False
-            print(torrent)
+            print(ceil(len(torrent.pieces)/20.0))
