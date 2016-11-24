@@ -155,13 +155,11 @@ class Database(object):
     def import_torrent(self, torrent, provider):
         """Imports a torrent object into the database. This function
         should only be called by the plugin module once in production
-
         Args:
             torrent (Torrent): Torrent object see torrent.py for more
             information
             provider (string): The url of the plugin that created the
             torrent
-
         Returns:
             BOOL: success or failure
         """
@@ -305,7 +303,6 @@ class Database(object):
         cursor = connection.cursor()
         try:
             cursor.execute("DELETE FROM plugins WHERE url = %s", (url,))
-
         except psycopg2.ProgrammingError as e:
             print(e)
             return False
@@ -322,10 +319,7 @@ class Database(object):
         except psycopg2.ProgrammingError as e:
             print(e)
         connection.close()
-<<<<<<< HEAD
-=======
         return []
->>>>>>> upstream/dev
 
     def get_connection(self):
         return psycopg2.connect(user=self.username,
