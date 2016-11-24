@@ -1,1 +1,0 @@
-__all__ = ['bencode', 'test_bencode']
