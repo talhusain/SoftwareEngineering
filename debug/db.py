@@ -214,16 +214,30 @@ class Database(object):
         """
         pass
 
-    def add_plugin(self, url):
+    def add_plugin(self, url, last_run):
         """Add a plugin URL to the database
 
         Args:
             url (string): Full patch a .git repo that is the plugin
+            last_run (datetime): The last time the plugin was run, if
+            never ran a datetime from the timestamp 0 should suffice.
 
         Returns:
             BOOL: success or failure
         """
-        pass
+        connection = self.get_connection()
+        cursor = connection.cursor()
+        try:
+            cursor.execute( ("INSERT INTO plugins VALUES (%s, %s) "
+                             "ON CONFLICT (url) DO NOTHING"),
+                             (url, last_run) )
+        except psycopg2.ProgrammingError as e:
+            print(e)
+            return False
+        connection.commit()
+        cursor.close()
+        connection.close()
+        return True
 
     def remove_plugin(self, url):
         connection = self.get_connection()
