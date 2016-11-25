@@ -206,10 +206,10 @@ class Have(Message):
     def __init__(self, index):
         self.length = 5
         self.id = 4
-        self.payload = index
+        self.index = index
 
     def to_bytes(self):
-        return super(Have, self).to_bytes() + pack('!l', self.payload)
+        return super(Have, self).to_bytes() + pack('!l', self.index)
 
 
 class BitField(Message):

@@ -8,8 +8,8 @@ from struct import pack
 import time
 
 
-class Session(object):
-    def __init__(self, peer, torrent):
+class Session(threading.Thread):
+    def __init__(self, peer, torrent, observer=None):
         self.peer = peer  # of the format tuple(str(ip), int(port))
         self.torrent = torrent
         self.peer_id = generate_peer_id()
@@ -19,30 +19,49 @@ class Session(object):
         self.recv_thread = None
         self.send_socket = None
         self.socket = None
+        self.alive = True
         self.lock = threading.Lock()
         self.message_queue = MessageQueue()
+
+        threading.Thread.__init__(self)
+
+        # go ahead and allow registering the observer now if passed
+        if observer:
+            self.observer = observer
 
     def register_observer(self, observer):
         self.observer = observer
 
-    def kickstart(self):
+    def run(self):
         '''Send the handshake and spawn a thread to start monitoring
         incoming messages, also spawn a thread to send the keep-alive
         message every minute.
         '''
-        data = self.send_recv_handshake()
-        if data:
-            # start processing messages from the peer if the handshake
-            # was successful
-            incoming_thread = threading.Thread(target=self.process_incoming_messages).start()
-            # send our interested message to let it know we would like
-            #to be unchoked
-            self.send_message(Message.get_message('interested'))
-            # schedule the keep-alive, in the future this will need
-            # refactored to close the session on failure, but for now
-            # brute force is good enough
-            keepalive = Message.get_message('keep-alive')
-            threading.Timer(60, self.send_message(keepalive)).start()
+        # if handshake fails close the thread
+        if not self.send_recv_handshake():
+            self.observer.close_session(self)
+            return
+        # start processing messages from the peer if the handshake
+        # was successful, this thread is a daemon so it can be
+        # closed when the session ends
+        incoming_t = threading.Thread(target=self.process_incoming_messages)
+        # print('started incoming thread %s' % incoming_t)
+        incoming_t.daemon = True
+        incoming_t.start()
+        # send our interested message to let it know we would like
+        #to be unchoked
+        self.send_message(Message.get_message('interested'))
+        # schedule the keep-alive, in the future this will need
+        # refactored to close the session on failure, but for now
+        # brute force is good enough
+        keepalive = Message.get_message('keep-alive')
+        ka_t = threading.Timer(60, self.send_message, args=(keepalive,))
+        ka_t.daemon = True
+        ka_t.start()
+
+        while self.alive:
+            continue
+
 
     def generate_handshake(self):
         """ Returns a handshake. """
@@ -63,7 +82,6 @@ class Session(object):
         except Exception as e:
             if str(e) != 'timed out':
                 print(self.peer, e)
-            self.observer.close_session(self)
             return None
         try:
             self.socket.send(handshake)
@@ -71,64 +89,68 @@ class Session(object):
             if len(data) == len(handshake):
                 print('establish connection with %s' % self.peer[0])
                 return data
-            else:
-                self.observer.close_session(self)
         except Exception as e:
             if str(e) != 'timed out':
                 print(self.peer, e)
-            self.observer.close_session(self)
             return None
 
     def process_incoming_messages(self):
         loop = True
+        self.have = []
         while loop:
             try:
                 self.lock.acquire()
-                data = self.socket.recv(2**14 + 32)
+                data = self.socket.recv(2**17)
+                self.lock.release()
                 for byte in data:
                     # print('%s sent byte %s' % (self.peer[0], byte))
                     self.message_queue.put(byte)
                 msg = self.message_queue.get_message()
                 if msg:
-                    print('got msg %s from %s' % (msg, self.peer[0]))
+                    print('got message %s - %s from %s' % (msg, msg.to_bytes(), self.peer[0]))
                 if isinstance(msg, UnChoke):
                     self.choked = False
+                    if len(self.have) > 0:
+                        self.send_message(Message.get_message('request', self.have[0].index, 0, 16384))
                 elif isinstance(msg, Choke):
                     self.choked = True
+                    self.send_message(Message.get_message('interested'))
+                elif isinstance(msg, Have):
+                    self.have += [msg]
+                elif isinstance(msg, BitField):
+                    self.send_message(msg)
             except Exception as e:
+                self.lock.release()
                 # ignore time outs
                 if str(e) == 'timed out':
                     continue
                 print(('Error getting incoming message from %s: %s' %
                       (self.peer[0], e)))
                 self.observer.close_session(self)
+                self.alive = False
                 loop = False
-            finally:
-                self.lock.release()
-                time.sleep(.5)
 
     def send_message(self, message):
         """ Sends a message """
         # We should only send interested and keep-alive messages if
         # choked
         if self.choked and not (isinstance(message, Interested) or
-                                isinstance(message, KeepAlive)):
-            print('client is in a choked state, canceling send for %s' % message)
+                                isinstance(message, KeepAlive) or
+                                isinstance(message, BitField)):
             return
-        print('sending message %s' % message)
+        print('sending message %s - %s to %s' % (message, message.to_bytes(), self.peer[0]))
         try:
             self.lock.acquire()
-            print('lock acquired by send_message()')
             self.socket.send(message.to_bytes())
+            self.lock.release()
         except Exception as e:
+            self.lock.release()
             if str(e) != 'timed out':
                 print(self.peer, e)
                 print(('Error getting incoming message from %s: %s' %
                       (self.peer[0], e)))
                 self.observer.close_session(self)
-        finally:
-            self.lock.release()
-            print('lock released')
+                self.alive = False
 
     def __eq__(self, other):
         return (self.torrent == other.torrent and
