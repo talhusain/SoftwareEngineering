@@ -212,18 +212,94 @@ class Database(object):
         Returns:
             Torrent: see torrent.py for more information
         """
-        pass
+        
+        connection = self.get_connection()
+        cursor = connection.cursor()
+        
+        SQL = "SELECT * FROM torrent_files WHERE info_hash = (%s);"
+        try:
+            cursor.execute(SQL, info_hash)
+            torrent_files = cursor.fetchone()
+        except psycopg2.ProgrammingError as e:
+            print(e)
+            return None
 
-    def add_plugin(self, url):
+        SQL = "SELECT * FROM torrents WHERE info_hash = (%s);"
+        try:
+            cursor.execute(SQL, info_hash)
+            tup = cursor.fetchone()
+        except psycopg2.ProgrammingError as e:
+            print(e)
+            return None
+
+        SQL = "SELECT file_path, length FROM torrent_files WHERE info_hash = (%s);"
+        try:
+            cursor.execute(SQL, info_hash)
+            file_path, length = cursor.fetchone()
+        except psycopg2.ProgrammingError as e:
+            print(e)
+            return None
+
+        SQL = "SELECT url FROM announcers WHERE info_hash = (%s);"
+        try:
+            cursor.execute(SQL, info_hash)
+            announcer = cursor.fetchone()
+        except psycopg2.ProgrammingError as e:
+            print(e)
+            return None
+
+        torrent = {}
+        torrent[b'info hash'] = bytes(info_hash[0])
+        torrent[b'name'] = tup[1].encode("utf-8")       
+        torrent[b'comment'] = tup[2].encode("utf-8")
+        torrent[b'created by'] = tup[3].encode("utf-8")
+        torrent[b'creation time'] = tup[4]
+        torrent[b'piece length'] = length.encode("utf-8")
+        torrent[b'pieces'] = bytes(tup[6])
+        torrent[b'info'] = { 
+                             b'name': tup[1].encode("utf-8"),
+                             b'piece length': bytes(tup[5]),
+                             b'pieces': bytes(tup[6]),
+                             b'files': [
+                                        { b'path': file_path.encode("utf-8"),
+                                          b'length': length.encode("utf-8") }
+                                       ]
+                           }
+        announcer_urls = announcer[0]  # Either a str or a list of lists of strings
+        if (isinstance(announcer_urls, str)):
+            torrent[b'announce'] = announcer_urls.encode("utf-8")
+        elif (isinstance(announcer_urls, list)):
+            for trackers in announcer_urls:
+                for tracker in trackers:
+                    tracker.encode("utf-8")
+            torrent[b'announce-list'] = announcer_urls
+
+        connection.close()
+        cursor.close()
+        
+        return Torrent(torrent)
+
+    def add_plugin(self, url, last_run):
         """Add a plugin URL to the database
-
         Args:
             url (string): Full patch a .git repo that is the plugin
-
         Returns:
             BOOL: success or failure
         """
-        pass
+        print("\nIn add_plugin()...\n\n")
+        connection = self.get_connection()
+        cursor = connection.cursor()
+        try:
+            cursor.execute( ("INSERT INTO plugins VALUES (%s, %s) "
+                             "ON CONFLICT (url) DO NOTHING"),
+                             (url, last_run) )
+        except psycopg2.ProgrammingError as e:
+            print(e)
+            return False
+        connection.commit()
+        cursor.close()
+        connection.close()
+        return True
 
     def remove_plugin(self, url):
         connection = self.get_connection()
