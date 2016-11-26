@@ -2,6 +2,7 @@ from bencoding import encode, decode
 from datetime import datetime as dt
 from hashlib import sha1
 from math import ceil
+from bitstring import BitArray
 import os
 from enum import Enum
 
@@ -21,6 +22,7 @@ class Torrent(object):
                  root_path=None):
 
         self._status = status
+
         if root_path is None:
             self._root_path = os.getcwd()
         else:
@@ -28,6 +30,8 @@ class Torrent(object):
 
         # populate torrent variables
         self.parse_torrent_dict(torrent_dict)
+
+        self.bitfield = BitArray(int((len(self.pieces)/20)) * '0b0')
 
     # needs refactored per @squidmin's suggestions, may require
     # changes to existing code since this is such a widely used object.

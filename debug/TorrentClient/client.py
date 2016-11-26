@@ -15,14 +15,14 @@ class Client(object):
 
     def start(self, torrent):
         for t in torrent.trackers:
-                tracker = Tracker(t, torrent, generate_peer_id())
-                for peer in tracker.get_peers():
-                    session = Session(peer, torrent, self)
-                    # session.register_observer(self)
-                    if torrent not in self._sessions:
-                        self._sessions[torrent] = []
-                    self._sessions[torrent].append(session)
-                    session.start()
+            tracker = Tracker(t, torrent, generate_peer_id())
+            for peer in tracker.get_peers():
+                session = Session(peer, torrent, self)
+                # session.register_observer(self)
+                if torrent not in self._sessions:
+                    self._sessions[torrent] = []
+                self._sessions[torrent].append(session)
+                session.start()
 
     def start_from_file(self, path):
         with open(path, 'rb') as f:
@@ -67,8 +67,7 @@ if __name__ == '__main__':
     pp = pprint.PrettyPrinter(indent=2)
     torrent_client = Client()
     for file in listdir('sample_torrents'):
-        print(file)
         torrent_client.start_from_file('sample_torrents/' + file)
 
-    print('overview of active torrents per session: ')
-    pp.pprint(torrent_client._sessions)
+    # print('overview of active torrents per session: ')
+    # pp.pprint(torrent_client._sessions)

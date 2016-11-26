@@ -85,8 +85,8 @@ class Message(object):
             return KeepAlive()
 
         # make sure the length is actually correct before parsing
-        if length != len(payload) - 4:
-            raise Exception('Message length mismatch')
+        # if length != len(payload) - 4:
+        #     raise Exception('Message length mismatch')
 
         # get the id and start parsing
         msg_id = int(unpack('!c', payload[4:5])[0][0])
