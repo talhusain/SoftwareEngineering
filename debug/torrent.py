@@ -61,12 +61,12 @@ class Torrent(object):
                                    'length': file[b'length']})
 
         # add tracker(s)
-        if b'announce' in self._torrent_dict:
-            self.trackers.append(self._torrent_dict[b'announce'])
         if b'announce-list' in self._torrent_dict:
             for trackers in self._torrent_dict[b'announce-list']:
                 for tracker in trackers:
                     self.trackers.append(tracker.decode('utf-8'))
+        elif b'announce' in self._torrent_dict:
+            self.trackers.append(self._torrent_dict[b'announce'])
 
     def get_comment(self):
         return self.comment
