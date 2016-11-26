@@ -11,8 +11,9 @@ def main():
     # Initialize db handler with settings file
     db = Database('settings.conf')
     
-    test_info_hash = b'\xf7\xfb\xaa\x14\x90\x97yE\xcf\xd5\xb8\x18\xb3\xcd\xb16\xce\xfd\xcb\x8e'
-    db.get_torrent(test_info_hash)
+    # Initialize Plugin Loader Object so it can load plugins and start
+    # populating the database
+    plugin.Loader(db, 'settings.conf')
 
     # Initialize the request handler and start taking http requests
     RequestHandler(db)
