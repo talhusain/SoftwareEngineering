@@ -9,13 +9,14 @@ import time
 from bitstring import BitArray
 from math import ceil
 import torrent
+import message
 
 
 class Session(threading.Thread):
     def __init__(self, peer, torrent, observer=None):
         self.peer = peer  # of the format tuple(str(ip), int(port))
         self.torrent = torrent
-        self.active_requests = 0
+        self.requesting_block = False
         self.bitfield = None  # bitfield the peer maintains
         self.peer_id = generate_peer_id()
         self.observer = None
@@ -76,9 +77,9 @@ class Session(threading.Thread):
         ka_t.start()
 
         # schedule the piece requests
-        req_t = threading.Thread(target=self.request_pieces)
-        req_t.daemon = True
-        req_t.start()
+        # req_t = threading.Thread(target=self.request_pieces)
+        # req_t.daemon = True
+        # req_t.start()
 
         while self.alive:
             continue
@@ -97,7 +98,7 @@ class Session(threading.Thread):
         """ Establishes the socket connection and sends the handshake"""
         handshake = self.generate_handshake()
         self.socket = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
-        self.socket.settimeout(1)
+        self.socket.settimeout(3)
         try:
             self.socket.connect(self.peer)
         except Exception as e:
@@ -119,14 +120,16 @@ class Session(threading.Thread):
         while True:
             try:
                 self.lock.acquire()
-                data = self.socket.recv(2**15)
+                data = self.socket.recv(2**16)
                 self.lock.release()
+                print('got data %s' % data)
                 for byte in data:
                     self.message_queue.put(byte)
             except Exception as e:
                 self.lock.release()
                 if str(e) == 'timed out':
                     continue
+                print(e)
                 self.observer.close_session(self)
                 self.alive = False
                 break
@@ -136,14 +139,16 @@ class Session(threading.Thread):
             msg = self.message_queue.get_message()
             if not msg:
                 continue
-                # print('got message %s from %s' % (msg, self.peer[0]))
-                # print(msg.to_bytes())
             else:
                 print('got message %s from %s' % (msg, self.peer[0]))
+                print(msg.to_bytes())
             if isinstance(msg, UnChoke):
                 self.choked = False
+                self.requesting_block = False
+                self.request_piece()
             elif isinstance(msg, Choke):
                 self.choked = True
+                self.requesting_block = False
                 self.send_message(Message.get_message('interested'))
             elif isinstance(msg, Have):
                 if not self.bitfield:
@@ -152,52 +157,38 @@ class Session(threading.Thread):
             elif isinstance(msg, BitField):
                 self.bitfield = BitArray(bytes(msg.bitfield))
             elif isinstance(msg, Interested):
-                self.send_message(Message.get_message('unchoke'))
+                pass
+                # self.send_message(Message.get_message('unchoke'))
             elif isinstance(msg, Piece):
                 print('processing piece msg...')
-                self.active_requests -= 1
+                self.requesting_block = False
                 self.current_piece.add_block(int(msg.begin), msg.block)
+                self.request_piece()
 
-
-
-    def request_pieces(self):
-        while True:
-            # if choked go ahead and return
-            if self.choked:
-                continue
-
-            # select a piece of we aren't already working on one
-            if not self.current_piece and self.bitfield != None:
-                for index in range(len(self.bitfield)):
-                    if (self.torrent.bitfield[index] == False and
-                        self.bitfield[index] == True and
-                        self.torrent.piece[index] != True):
-                        self.current_piece = self.torrent.piece[index]
-                        print('starting request for piece %s' % str(index))
-                        break
-            else:
-                continue
-
-            for offset in range(len(self.current_piece.bitfield)):
-                if (self.current_piece.bitfield[offset] == False and
-                    self.active_requests < 1):
-                    req = Message.get_message('request',
-                                              offset,
-                                              offset * (2**14),
-                                              2**14)
-                    print('starting thread for new requests for piece %s' % str(offset))
-                    t = threading.Thread(target=self.send_message,
-                                         args=(req,))
-                    t.daemon = True
-                    t.start()
-                    self.active_requests += 1
-
-            # if we are at our max number of requests give them 60 seconds
-            # before clearing them
-            if self.active_requests == 1:
-                print("max number of active requests met, waiting 60 seconds before giving up")
-                time.sleep(60)
-                self.active_requests = 0
+    def request_piece(self):
+        # if choked or waiting for request go ahead and return
+        if self.choked or self.requesting_block:
+            return
+        # select a piece of we aren't already working on one
+        if not self.current_piece and self.bitfield != None:
+            for index in range(len(self.bitfield)):
+                if (self.torrent.bitfield[index] == False and
+                    self.bitfield[index] == True and
+                    self.torrent.piece[index] != True):
+                    self.current_piece = self.torrent.piece[index]
+                    print('starting request for piece %s' % str(index))
+                    break
+        for offset in range(len(self.current_piece.bitfield)):
+            if (self.current_piece.bitfield[offset] == False):
+                req = Message.get_message('request',
+                                          offset,
+                                          offset * (2**14),
+                                          2**14)
+                print('starting thread for new requests for piece %s' % str(offset))
+                t = threading.Thread(target=self.send_message, args=(req,))
+                t.daemon = True
+                t.start()
+                self.requesting_block = True
 
     def send_message(self, message):
         """ Sends a message """

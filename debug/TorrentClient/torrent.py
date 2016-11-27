@@ -12,10 +12,11 @@ class Piece(object):
     def __init__(self, length, hash, block_length=16384):
         self.length = length
         self.block_length = block_length
-        self.piece = bytes(b'\x00' * length)
+        self.piece = None
         self.bitfield = BitArray(ceil(length/(self.block_length)) * '0b0')
         self.lock = threading.Lock()
         self._in_progress = False
+        self._hash = hash
 
     def complete(self):
         return self.bitfield == BitArray(len(self.bitfield) * '0b1')
@@ -28,7 +29,10 @@ class Piece(object):
         return 100.0 * count / len(self.bitfield)
 
     def add_block(self, offset, block):
-        # print(offset, self.block_length)
+        # we only need the actual space allocated if we are going to add
+        # a block
+        if not self.piece:
+            self.piece = bytes(b'\x00' * length)
         self.bitfield[int(offset/self.block_length)] = True
         piece = bytearray(self.piece)
         piece[offset:self.block_length] = bytearray(block)

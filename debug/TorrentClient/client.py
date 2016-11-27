@@ -13,7 +13,7 @@ class Client(object):
             self.download_location = 'torrent_downloads/'
         else:
             self.download_location = download_location
-        threading.Timer(60, self._keepalive_peers).start()
+        threading.Timer(20, self._keepalive_peers).start()
 
     def start(self, torrent):
         for t in torrent.trackers:
@@ -27,7 +27,7 @@ class Client(object):
                 session.start()
 
     def _keepalive_peers(self):
-        for torrent, sessions in self._sessions:
+        for torrent, sessions in self._sessions.items():
             for t in torrent.trackers:
                 tracker = Tracker(t, torrent, generate_peer_id())
                 for peer in tracker.get_peers():
