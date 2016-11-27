@@ -1,21 +1,28 @@
 from struct import pack, unpack
 from queue import Queue
+import threading
 
 
 class MessageQueue(Queue):
     def __init__(self):
         Queue.__init__(self)
+        self.length = None
+        self.lock = threading.RLock()
 
     def get_message(self):
         ''' Return the message at the front of the queue, or None if
         if there is not a complete message. '''
+        self.lock.acquire()
         length = self.peek_length()
         if length and length + 4 <= self.qsize():
             msg = bytearray()
             for _ in range(length + 4):
                 msg.append(self.get())
+            # print('getting msg from %s' % msg)
+            self.lock.release()
             return Message.get_message_from_bytes(msg)
         else:
+            self.lock.release()
             return None
 
     def peek_length(self):
@@ -23,10 +30,11 @@ class MessageQueue(Queue):
         Useful when determining if a full message can be pulled.'''
         if self.qsize() < 4:
             return None
-        return (self.queue[0] +
-                self.queue[1] +
-                self.queue[2] +
-                self.queue[3])
+        length =  bytes([self.queue[0],
+                         self.queue[1],
+                         self.queue[2],
+                         self.queue[3]])
+        return unpack('>l', length)[0]
 
 
 class Message(object):
