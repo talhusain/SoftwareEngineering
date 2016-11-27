@@ -1,10 +1,58 @@
 from bencoding import encode, decode
-from datetime import datetime as dt
+from datetime import datetime
 from hashlib import sha1
 from math import ceil
 from bitstring import BitArray
 import os
 from enum import Enum
+import threading
+
+
+class Piece(object):
+    def __init__(self, length, hash, block_length=16384):
+        self.length = length
+        self.block_length = block_length
+        self.piece = bytes(b'\x00' * length)
+        self.bitfield = BitArray(ceil(length/(self.block_length)) * '0b0')
+        self.lock = threading.Lock()
+        self._in_progress = False
+
+    def complete(self):
+        return self.bitfield == BitArray(len(self.bitfield) * '0b1')
+
+    def get_percent_complete(self):
+        count = 0
+        for b in self.bitfield:
+            if b:
+                count += 1
+        return 100.0 * count / len(self.bitfield)
+
+    def add_block(self, offset, block):
+        # print(offset, self.block_length)
+        self.bitfield[int(offset/self.block_length)] = True
+        piece = bytearray(self.piece)
+        piece[offset:self.block_length] = bytearray(block)
+        self.piece = piece
+        print("Percent complete (piece): %s" % str(self.get_percent_complete()))
+
+    @property
+    def in_progress(self):
+        self.lock.acquire()
+        in_progress = self._in_progress
+        self.lock.release()
+        return in_progress
+
+    @in_progress.setter
+    def in_progress(self, value):
+        self.lock.acquire()
+        self.in_progress = value
+        self.lock.release()
+
+    def __str__(self):
+        return str(self.piece)
+
+    def __hash__(self):
+        return hash(self.piece)
 
 
 class Status(Enum):
@@ -18,94 +66,21 @@ class Torrent(object):
 
     def __init__(self,
                  torrent_dict,
+                 info_hash=None,
                  status=Status.paused,
                  root_path=None):
 
+        self._dict = torrent_dict
         self._status = status
+        self._info_hash = info_hash
+        self._bitfield = BitArray(int((len(self.pieces)/20)) * '0b0')
+        self._root_path = root_path
+        self._piece = []
 
-        if root_path is None:
-            self._root_path = os.getcwd()
-        else:
-            self._root_path = root_path
+        for index in range(self.total_pieces):
+            piece_hash = bytes([self.pieces[i] for i in range(index, index + 20)])
+            self._piece += [Piece(self.piece_length, piece_hash)]
 
-        # populate torrent variables
-        self.parse_torrent_dict(torrent_dict)
-
-        self.bitfield = BitArray(int((len(self.pieces)/20)) * '0b0')
-
-    # needs refactored per @squidmin's suggestions, may require
-    # changes to existing code since this is such a widely used object.
-    def parse_torrent_dict(self, torrent_dict):
-        '''Constructs a torrent objects from a decoded torrent
-           dictionary, populates the following member variables.
-           files [{path: path(str), length: length(int)}...]
-           trackers [url(str)...]
-           length (int)
-           comment (str) (optional)
-           created_by (str) (optional)
-           creation_date (datetime.datetime) (optional)
-           encoding (str) (optional)
-           name (str)
-           piece_length (int)
-           pieces (bytes)
-           info_hash (bytes)
-
-        Args:
-            torrent_dict (dict): Decoded torrent file, all strings are
-            expected to b byte strings and will be decoded into regular
-            strings.
-        '''
-        self.files = []
-        self.trackers = []
-        self._torrent_dict = torrent_dict
-        self.length = 0
-
-        # Populate Optional Fields
-        if b'comment' in self._torrent_dict:
-            self.comment = self._torrent_dict[b'comment'].decode('utf-8')
-        else:
-            self.comment = ''
-        if b'created by' in self._torrent_dict:
-            self.created_by = self._torrent_dict[b'created by'].decode('utf-8')
-        else:
-            self.created_by = ''
-        if b'creation date' in self._torrent_dict:
-            creation_date_timestamp = self._torrent_dict[b'creation date']
-            self.creation_date = dt.fromtimestamp(creation_date_timestamp)
-        else:
-            self.creation_date = dt.fromtimestamp(0)
-        if b'encoding' in self._torrent_dict:
-            self.encoding = self._torrent_dict[b'encoding'].decode('utf-8')
-        else:
-            self.encoding = ''
-
-        # Populate required fields
-        self.name = self._torrent_dict[b'info'][b'name'].decode('utf-8')
-        self.piece_length = self._torrent_dict[b'info'][b'piece length']
-        self.pieces = self._torrent_dict[b'info'][b'pieces']
-        self.info_hash = sha1(encode(self._torrent_dict[b'info'])).digest()
-
-        # Add single file(s)
-        if b'length' in self._torrent_dict[b'info']:
-            path = self._torrent_dict[b'info'][b'name'].decode('utf-8')
-            length = self._torrent_dict[b'info'][b'length']
-            self.length = length
-            self.files.append({'path': path, 'length': length})
-        else:
-            for file in self._torrent_dict[b'info'][b'files']:
-                path = [path.decode('utf-8') for path in file[b'path']]
-                length = file[b'length']
-                self.length += length
-                self.files.append({'path': os.path.join(*path),
-                                   'length': length})
-
-        # add tracker(s)
-        if b'announce-list' in self._torrent_dict:
-            for trackers in self._torrent_dict[b'announce-list']:
-                for tracker in trackers:
-                    self.trackers.append(tracker.decode('utf-8'))
-        elif b'announce' in self._torrent_dict:
-            self.trackers.append(self._torrent_dict[b'announce'])
 
     @property
     def status(self):
@@ -116,6 +91,95 @@ class Torrent(object):
         if value not in Status.__members__:
             raise ValueError('Unknown status \'%s\'' % value)
         self._status = value
+
+    @property
+    def pieces(self):
+        return self._dict[b'info'][b'pieces']
+
+    @property
+    def piece_length(self):
+        return self._dict[b'info'][b'piece length']
+
+    @property
+    def name(self):
+        return self._dict[b'info'][b'name'].decode('utf-8')
+
+    @property
+    def info_hash(self):
+        if self._info_hash:
+            return self._info_hash
+        else:
+            return sha1(encode(self._dict[b'info'])).digest()
+
+    @property
+    def comment(self):
+        if b'comment' in self._dict:
+            return self._dict[b'comment'].decode('utf-8')
+        return ''
+
+    @property
+    def created_by(self):
+        if b'created by' in self._dict:
+            return self._dict[b'created by'].decode('utf-8')
+        return ''
+
+    @property
+    def creation_date(self):
+        if b'creation date' in self._dict:
+            return datetime.fromtimestamp(self._dict[b'creation date'])
+        else:
+            return datetime.fromtimestamp(0)
+
+    @property
+    def encoding(self):
+        if b'encoding' in self._dict:
+            return self._dict[b'encoding'].decode('utf-8')
+        return ''
+
+    @property
+    def files(self):
+        files = []
+        if b'length' in self._dict[b'info']:
+            path = self._dict[b'info'][b'name'].decode('utf-8')
+            length = self._dict[b'info'][b'length']
+            files.append({'path': path, 'length': length})
+        else:
+            for file in self._dict[b'info'][b'files']:
+                path = [path.decode('utf-8') for path in file[b'path']]
+                length = file[b'length']
+                files.append({'path': os.path.join(*path),
+                              'length': length})
+        return files
+
+    @property
+    def length(self):
+        length = 0
+        for file in self.files:
+            length += file['length']
+        return length
+
+    @property
+    def trackers(self):
+        ret = []
+        if b'announce-list' in self._dict:
+            for trackers in self._dict[b'announce-list']:
+                for tracker in trackers:
+                    ret.append(tracker.decode('utf-8'))
+        elif b'announce' in self._dict:
+            ret.append(self._dict[b'announce'])
+        return ret
+
+    @property
+    def total_pieces(self):
+        return int(len(self.pieces) / 20)
+
+    @property
+    def bitfield(self):
+        return self._bitfield
+
+    @property
+    def piece(self):
+        return self._piece
 
     def __eq__(self, other):
         ''' Torrents are considered equal if their info_hashes are the same'''
@@ -135,8 +199,26 @@ class Torrent(object):
 
 
 if __name__ == '__main__':
+    import pprint
+    pp = pprint.PrettyPrinter(indent=2)
     for file in os.listdir('sample_torrents'):
         with open('sample_torrents/' + file, 'rb') as f:
             torrent_dict = decode(f.read())
             torrent = Torrent(torrent_dict)
-            print(ceil(len(torrent.pieces)/20.0))
+            pp.pprint('name: %s' % torrent.name)
+            pp.pprint('info_hash: %s' % torrent.info_hash)
+            pp.pprint('comment: %s' % torrent.comment)
+            pp.pprint('status: %s' % torrent.status)
+            pp.pprint('pieces: %s' % torrent.pieces)
+            pp.pprint('piece_length: %s' % torrent.piece_length)
+            pp.pprint('created_by: %s' % torrent.created_by)
+            pp.pprint('creation_date: %s' % torrent.creation_date)
+            pp.pprint('encoding: %s' % torrent.encoding)
+            pp.pprint('files: %s' % torrent.files)
+            pp.pprint('length: %s' % torrent.length)
+            pp.pprint('trackers: %s' % torrent.trackers)
+            pp.pprint('total_pieces: %s' % torrent.total_pieces)
+            pp.pprint('bitfield: %s' % torrent.bitfield)
+
+
+        print()

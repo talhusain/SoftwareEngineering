@@ -2,6 +2,7 @@ from bencoding import decode
 from session import Session
 from tracker import Tracker
 from util import generate_peer_id
+import threading
 
 
 class Client(object):
@@ -12,6 +13,7 @@ class Client(object):
             self.download_location = 'torrent_downloads/'
         else:
             self.download_location = download_location
+        threading.Timer(60, self._keepalive_peers).start()
 
     def start(self, torrent):
         for t in torrent.trackers:
@@ -23,6 +25,18 @@ class Client(object):
                     self._sessions[torrent] = []
                 self._sessions[torrent].append(session)
                 session.start()
+
+    def _keepalive_peers(self):
+        for torrent, sessions in self._sessions:
+            for t in torrent.trackers:
+                tracker = Tracker(t, torrent, generate_peer_id())
+                for peer in tracker.get_peers():
+                    if peer not in [p.peer for p in sessions]:
+                        print('adding new peer %s' % peer[0])
+                        session = Session(peer, torrent, self)
+                        self._sessions[torrent].append(session)
+                        session.start()
+
 
     def start_from_file(self, path):
         with open(path, 'rb') as f:

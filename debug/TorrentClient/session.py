@@ -8,25 +8,7 @@ from struct import pack
 import time
 from bitstring import BitArray
 from math import ceil
-
-class Piece(object):
-    def __init__(self, index, length, block_length=16384):
-        self.index = index
-        self.length = length
-        self.block_length = block_length
-        self.piece = bytes(b'\x00' * length)
-        self.bitfield = BitArray(ceil(length/(self.block_length)) * '0b0')
-
-    def complete(self):
-        return self.bitfield == BitArray(len(self.bitfield) * '0b1')
-
-    def add_block(self, index, block):
-        self.bitfield[index] = True
-        self.piece[index:self.block_length] = block
-
-    def __str__(self):
-        return str(self.piece)
-
+import torrent
 
 
 class Session(threading.Thread):
@@ -94,7 +76,7 @@ class Session(threading.Thread):
         ka_t.start()
 
         # schedule the piece requests
-        req_t = threading.Timer(5, self.request_pieces)
+        req_t = threading.Thread(target=self.request_pieces)
         req_t.daemon = True
         req_t.start()
 
@@ -152,10 +134,12 @@ class Session(threading.Thread):
     def process_incoming_messages(self):
         while True:
             msg = self.message_queue.get_message()
-            if msg:
-                print('got message %s' % (msg))
-            else:
+            if not msg:
                 continue
+                # print('got message %s from %s' % (msg, self.peer[0]))
+                # print(msg.to_bytes())
+            else:
+                print('got message %s from %s' % (msg, self.peer[0]))
             if isinstance(msg, UnChoke):
                 self.choked = False
             elif isinstance(msg, Choke):
@@ -166,44 +150,54 @@ class Session(threading.Thread):
                     self.bitfield = self.torrent.bitfield  # temporary hack for 0 bitfield
                 self.bitfield[msg.index] = True
             elif isinstance(msg, BitField):
-                # print(bytes(msg.bitfield))
                 self.bitfield = BitArray(bytes(msg.bitfield))
-                # print('got bitfield %s' % self.bitfield.bin)
             elif isinstance(msg, Interested):
                 self.send_message(Message.get_message('unchoke'))
             elif isinstance(msg, Piece):
-                if self.active_requests > 0:
-                    self.active_requests -= 1
-                print(msg.block)
-                self.current_piece.add_block(msg.begin, msg.block)
+                print('processing piece msg...')
+                self.active_requests -= 1
+                self.current_piece.add_block(int(msg.begin), msg.block)
+
+
 
     def request_pieces(self):
-        # select a piece of we aren't already working on one
-        if not self.current_piece:
-            for index in range(len(self.bitfield)):
-                if (self.torrent.bitfield[index] == False and
-                    self.bitfield[index] == True):
-                    self.current_piece = Piece(index,
-                                               self.torrent.piece_length)
-                    break
-        # if choked go ahead and return
-        if self.choked == True:
-            return
-        # if not choked go ahead and start getting a block of our piece
-        if self.current_piece:
+        while True:
+            # if choked go ahead and return
+            if self.choked:
+                continue
+
+            # select a piece of we aren't already working on one
+            if not self.current_piece and self.bitfield != None:
+                for index in range(len(self.bitfield)):
+                    if (self.torrent.bitfield[index] == False and
+                        self.bitfield[index] == True and
+                        self.torrent.piece[index] != True):
+                        self.current_piece = self.torrent.piece[index]
+                        print('starting request for piece %s' % str(index))
+                        break
+            else:
+                continue
+
             for offset in range(len(self.current_piece.bitfield)):
                 if (self.current_piece.bitfield[offset] == False and
-                    self.active_requests < 3):
+                    self.active_requests < 1):
                     req = Message.get_message('request',
-                                              self.current_piece.index,
+                                              offset,
                                               offset * (2**14),
                                               2**14)
-                    threading.Thread(target=self.send_message,
-                                     args=(req,)).start()
+                    print('starting thread for new requests for piece %s' % str(offset))
+                    t = threading.Thread(target=self.send_message,
+                                         args=(req,))
+                    t.daemon = True
+                    t.start()
                     self.active_requests += 1
 
-
-
+            # if we are at our max number of requests give them 60 seconds
+            # before clearing them
+            if self.active_requests == 1:
+                print("max number of active requests met, waiting 60 seconds before giving up")
+                time.sleep(60)
+                self.active_requests = 0
 
     def send_message(self, message):
         """ Sends a message """
