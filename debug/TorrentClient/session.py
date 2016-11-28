@@ -134,7 +134,8 @@ class Session(threading.Thread):
                 if self.current_piece.complete():
                     self.current_piece = None
                 self.request_piece()
-        if (self.message_queue.peek_length() and self.message_queue.peek_length() > self.message_queue.qsize()):
+        if (self.message_queue.peek_length() and
+                self.message_queue.peek_length() > self.message_queue.qsize()):
             self.receive_incoming()
 
     def request_piece(self):
