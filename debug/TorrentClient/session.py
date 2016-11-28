@@ -91,7 +91,7 @@ class Session(threading.Thread):
             self.lock.acquire()
             data = self.socket.recv(2**14)
             self.lock.release()
-            print('received data %s' % data)
+            print('received data of length %s: %s' % (len(data), data))
             for byte in data:
                 self.message_queue.put(byte)
             self.process_incoming_messages()
