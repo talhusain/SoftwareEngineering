@@ -133,6 +133,7 @@ class Session(threading.Thread):
                 self.current_piece.add_block(int(msg.begin), msg.block)
                 if self.current_piece.complete():
                     print('FINISHED DOWNLOADING A PIECE')
+                    self.torrent.bitfield[self.current_piece.index] = True
                     self.current_piece = None
                 self.request_piece()
         if (self.message_queue.peek_length() and
@@ -144,7 +145,8 @@ class Session(threading.Thread):
             return
         if not self.current_piece:
             for index in range(len(self.bitfield)):
-                if self.bitfield[index]:
+                if (self.bitfield[index] and
+                        not self.torrent.bitfield[index]):
                     self.current_piece = self.torrent.piece[index]
                     break
         r = list(range(len(self.current_piece.bitfield)))
