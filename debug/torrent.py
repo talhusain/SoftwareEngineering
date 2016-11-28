@@ -26,13 +26,21 @@ class Torrent(object):
         # Populate Optional Fields
         if b'comment' in self._torrent_dict:
             self.comment = self._torrent_dict[b'comment'].decode('utf-8')
+        else:
+            self.comment = ''
         if b'created by' in self._torrent_dict:
             self.created_by = self._torrent_dict[b'created by'].decode('utf-8')
+        else:
+            self.created_by = ''
         if b'creation date' in self._torrent_dict:
             creation_date_timestamp = self._torrent_dict[b'creation date']
             self.creation_date = dt.fromtimestamp(creation_date_timestamp)
+        else:
+            self.creation_date = dt.fromtimestamp(0)
         if b'encoding' in self._torrent_dict:
             self.encoding = self._torrent_dict[b'encoding'].decode('utf-8')
+        else:
+            self.encoding = ''
 
         # Populate required fields
         self.name = self._torrent_dict[b'info'][b'name'].decode('utf-8')
