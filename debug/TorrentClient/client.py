@@ -57,8 +57,11 @@ class Client(object):
                 for peer in tracker.get_peers():
                     if peer not in [p.peer for p in sessions]:
                         print('adding new peer %s' % peer[0])
-                        session = Session(peer, torrent, self)
+                        session_to_add = Session(peer, torrent, self)
                         # self._sessions[torrent].append(session)
+            for s in session_to_add:
+                s.start()
+                self._sessions[torrent].append(s)
 
     def get_sessions(self):
         return self.sessions
