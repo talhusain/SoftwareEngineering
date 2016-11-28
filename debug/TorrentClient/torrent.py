@@ -69,16 +69,14 @@ class Status(Enum):
     paused = 1
     downloading = 2
     seeding = 3
-    choked = 4
-
 
 class Torrent(object):
 
     def __init__(self,
                  torrent_dict,
                  info_hash=None,
-                 status=Status.paused,
-                 root_path=None):
+                 root_path=None,
+                 status=Status.paused):
 
         self._dict = torrent_dict
         self._status = status
@@ -90,7 +88,6 @@ class Torrent(object):
         for index in range(self.total_pieces):
             piece_hash = bytes([self.pieces[i] for i in range(index, index + 20)])
             self._piece += [Piece(self.piece_length, piece_hash, index)]
-
 
     @property
     def status(self):
@@ -229,6 +226,4 @@ if __name__ == '__main__':
             pp.pprint('trackers: %s' % torrent.trackers)
             pp.pprint('total_pieces: %s' % torrent.total_pieces)
             pp.pprint('bitfield: %s' % torrent.bitfield)
-
-
         print()

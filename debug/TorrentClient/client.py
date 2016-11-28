@@ -2,14 +2,12 @@ from bencoding import decode
 from session import Session
 from tracker import Tracker
 from util import generate_peer_id
-import torrent as tor
 import threading
 
 
 class Client(object):
     def __init__(self, download_location=None):
         self._sessions = {}  # 'torrent: [session1, session2]'
-        self._torrent_status = {}  # '{torrent: status...}'
         if download_location is None:
             self.download_location = 'torrent_downloads/'
         else:
@@ -17,7 +15,7 @@ class Client(object):
         threading.Timer(10, self._keepalive_peers).start()
 
     def start(self, torrent):
-        torrent.status = tor.Status.downloading
+        torrent.status = 'downloading'
         for t in torrent.trackers:
             tracker = Tracker(t, torrent, generate_peer_id())
             for peer in tracker.get_peers():
@@ -27,6 +25,31 @@ class Client(object):
                     self._sessions[torrent] = []
                 self._sessions[torrent].append(session)
                 session.start()
+
+    def start_from_file(self, path):
+        with open(path, 'rb') as f:
+            self.start(Torrent(decode(f.read())))
+
+    def pause(self, torrent):
+        torrent.status = 'paused'
+
+    def resume(self, torrent):
+        torrent.status = 'downloading'
+        self.start(torrent)
+
+    def cancel(self, torrent):
+        for s in self._sessions[torrent]:
+            s.alive = False
+        del self._sessions[torrent]
+
+    def set_upload_limit(self, limit):
+        pass
+
+    def set_download_limit(self, limit):
+        pass
+
+    def set_seed_ratio(self, ratio):
+        pass
 
     def _keepalive_peers(self):
         for torrent, sessions in self._sessions.items():
@@ -38,28 +61,6 @@ class Client(object):
                         session = Session(peer, torrent, self)
                         self._sessions[torrent].append(session)
                         session.start()
-
-    def start_from_file(self, path):
-        with open(path, 'rb') as f:
-            self.start(Torrent(decode(f.read())))
-
-    def pause(self, torrent):
-        pass
-
-    def resume(self, torrent):
-        pass
-
-    def cancel(self, torrent):
-        pass
-
-    def set_upload_limit(self, limit):
-        pass
-
-    def set_download_limit(self, limit):
-        pass
-
-    def set_seed_ratio(self, ratio):
-        pass
 
     def get_sessions(self):
         return self.sessions
