@@ -53,7 +53,6 @@ class Session(threading.Thread):
         # send our interested message to let it know we would like
         # to be unchoked
         self.send_message(Message.get_message('interested'))
-        self.receive_incoming()
 
         # spawn thread to start receiving messages
         incoming_t = threading.Thread(target=self.receive_incoming)
@@ -96,18 +95,19 @@ class Session(threading.Thread):
             return None
 
     def receive_incoming(self):
-        try:
-            self.lock.acquire()
-            data = self.socket.recv(2**24)
-            self.lock.release()
-            for byte in data:
-                self.message_queue.put(byte)
-            self.process_incoming_messages()
-        except Exception as e:
-            self.lock.release()
-            print('[%s] receive_incoming() - %s' % (self.peer[0], e))
-            self.observer.close_session(self)
-            self.alive = False
+        while self.alive:
+            try:
+                self.lock.acquire()
+                data = self.socket.recv(2**24)
+                self.lock.release()
+                for byte in data:
+                    self.message_queue.put(byte)
+                self.process_incoming_messages()
+            except Exception as e:
+                self.lock.release()
+                print('[%s] receive_incoming() - %s' % (self.peer[0], e))
+                self.observer.close_session(self)
+                self.alive = False
 
     def process_incoming_messages(self):
         while not self.message_queue.empty():
@@ -176,7 +176,6 @@ class Session(threading.Thread):
             print('[%s] send_message() - %s' % (self.peer[0], e))
             self.observer.close_session(self)
             self.alive = False
-        self.receive_incoming()
 
     def __eq__(self, other):
         return (self.torrent == other.torrent and
