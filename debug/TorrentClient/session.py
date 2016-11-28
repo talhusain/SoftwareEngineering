@@ -80,7 +80,7 @@ class Session(threading.Thread):
         handshake = self.generate_handshake()
         self.socket = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
         # self.socket.setsockopt(socket.SOL_SOCKET, socket.SO_REUSEADDR, 1)
-        self.socket.setblocking(False)
+        self.socket.settimeout(10)
         try:
             self.socket.connect(self.peer)
         except Exception:
