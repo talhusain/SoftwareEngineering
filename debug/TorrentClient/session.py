@@ -67,9 +67,9 @@ class Session(threading.Thread):
         # refactored to close the session on failure, but for now
         # brute force is good enough
         # keepalive = Message.get_message('keep-alive')
-        # ka_t = threading.Timer(60, self.send_message, args=(keepalive,))
+        ka_t = threading.Timer(60, self.send_message, args=(keepalive,))
         # ka_t.daemon = True
-        # ka_t.start()
+        ka_t.start()
 
         while self.alive:
             continue
