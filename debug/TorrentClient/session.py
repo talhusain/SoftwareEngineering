@@ -80,7 +80,7 @@ class Session(threading.Thread):
         handshake = self.generate_handshake()
         self.socket = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
         self.socket.setsockopt(socket.SOL_SOCKET, socket.SO_REUSEADDR, 1)
-        self.socket.setblocking(True)
+        # self.socket.setblocking(True)
         try:
             self.socket.connect(self.peer)
         except Exception:
@@ -117,7 +117,7 @@ class Session(threading.Thread):
             else:
                 print('[%s] Received Message %s' % (self.peer[0], msg))
             if isinstance(msg, UnChoke):
-                if self.choked:
+                if self.choked:  # ignore duplicate unchokes
                     self.choked = False
                     self.request_piece()
             elif isinstance(msg, Choke):
