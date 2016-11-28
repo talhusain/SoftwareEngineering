@@ -56,7 +56,7 @@ class Session(threading.Thread):
 
         # send our interested message to let it know we would like
         # to be unchoked
-        self.send_message(Message.get_message('interested'))
+        # self.send_message(Message.get_message('interested'))
 
         # schedule the keep-alive
         keepalive = Message.get_message('keep-alive')
