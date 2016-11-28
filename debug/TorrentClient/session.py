@@ -44,7 +44,7 @@ class Session(threading.Thread):
 
         # spawn thread to start receiving messages
         threading.Thread(target=self.receive_incoming).start()
-        threading.Thread(target=self.process_incoming).start()
+        # threading.Thread(target=self.process_incoming).start()
 
         # schedule the keep-alive
         # keepalive = Message.get_message('keep-alive')
@@ -91,7 +91,7 @@ class Session(threading.Thread):
                 print('received data of length %s: %s' % (len(data), data))
                 for byte in data:
                     self.message_queue.put(byte)
-                # self.process_incoming()
+                self.process_incoming()
             except Exception as e:
                 self.lock.release()
                 print('[%s] receive_incoming() - %s' % (self.peer[0], e))
@@ -99,11 +99,11 @@ class Session(threading.Thread):
                 self.alive = False
 
     def process_incoming(self):
-        # while not self.message_queue.empty():
-        while self.alive:
+        while not self.message_queue.empty():
+        # while self.alive:
             msg = self.message_queue.get_message()
             if not msg:
-                continue #  break
+                break
             else:
                 print('[%s] Received Message %s' % (self.peer[0], msg))
             if isinstance(msg, UnChoke):
