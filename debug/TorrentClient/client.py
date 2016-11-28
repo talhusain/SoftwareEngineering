@@ -51,18 +51,21 @@ class Client(object):
         pass
 
     def _keepalive_peers(self):
-        for torrent, sessions in self._sessions.items():
-            session_to_add = []
-            for t in torrent.trackers:
-                tracker = Tracker(t, torrent, generate_peer_id())
-                for peer in tracker.get_peers():
-                    if peer not in [p.peer for p in sessions]:
-                        print('adding new peer %s' % peer[0])
-                        session_to_add.append(Session(peer, torrent, self))
-                        # self._sessions[torrent].append(session)
-            for s in session_to_add:
-                s.start()
-                self._sessions[torrent].append(s)
+        try:
+            for torrent, sessions in self._sessions.items():
+                session_to_add = []
+                for t in torrent.trackers:
+                    tracker = Tracker(t, torrent, generate_peer_id())
+                    for peer in tracker.get_peers():
+                        if peer not in [p.peer for p in sessions]:
+                            print('adding new peer %s' % peer[0])
+                            session_to_add.append(Session(peer, torrent, self))
+                            # self._sessions[torrent].append(session)
+                for s in session_to_add:
+                    s.start()
+                    self._sessions[torrent].append(s)
+        except:
+            continue
 
     def get_sessions(self):
         return self.sessions
