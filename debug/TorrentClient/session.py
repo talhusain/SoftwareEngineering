@@ -92,10 +92,11 @@ class Session(threading.Thread):
             data = self.socket.recv(2**14)
             while True:
                 chunk = self.socket.recv(2**14)
-                data += continued
-                if not continued: break
+                data += chunk
+                if not chunk:
+                    break
             self.lock.release()
-            print('received data %s' % data)
+            print('received data of length %s: %s' % (len(data), data))
             for byte in data:
                 self.message_queue.put(byte)
             self.process_incoming_messages()
