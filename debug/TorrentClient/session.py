@@ -5,11 +5,8 @@ from message import *
 import socket
 import threading
 from struct import pack
-# import time
+import time
 from bitstring import BitArray
-# from math import ceil
-# import torrent
-# import message
 import random
 
 
@@ -91,6 +88,7 @@ class Session(threading.Thread):
             self.lock.acquire()
             data = self.socket.recv(2**14)
             while True:
+                time.sleep(2)
                 chunk = self.socket.recv(2**14)
                 data += chunk
                 if not chunk:
