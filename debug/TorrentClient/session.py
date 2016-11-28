@@ -50,8 +50,7 @@ class Session(threading.Thread):
             self.observer.close_session(self)
             return
 
-        # spawn thread to start receiving messages and queueing them up
-        # for processing
+        # spawn thread to start receiving messages
         incoming_t = threading.Thread(target=self.receive_incoming)
         incoming_t.start()
 
@@ -59,16 +58,9 @@ class Session(threading.Thread):
         # to be unchoked
         self.send_message(Message.get_message('interested'))
 
-        # spawn thread to start processing the incoming messages
-        # process_inc_t = threading.Thread(target=self.process_incoming_messages)
-        # process_inc_t.start()
-
-        # schedule the keep-alive, in the future this will need
-        # refactored to close the session on failure, but for now
-        # brute force is good enough
+        # schedule the keep-alive
         keepalive = Message.get_message('keep-alive')
         ka_t = threading.Timer(60, self.send_message, args=(keepalive,))
-        # ka_t.daemon = True
         ka_t.start()
 
         while self.alive:
@@ -91,7 +83,7 @@ class Session(threading.Thread):
         self.socket.setblocking(True)
         try:
             self.socket.connect(self.peer)
-        except Exception as e:
+        except Exception:
             return None
         try:
             self.socket.send(handshake)
@@ -99,16 +91,14 @@ class Session(threading.Thread):
             if len(data) == len(handshake):
                 print('[%s] Established Connection' % self.peer[0])
                 return data
-        except Exception as e:
+        except Exception:
             return None
 
     def receive_incoming(self):
         while self.alive:
             try:
                 self.lock.acquire()
-                self.socket.ioctl(socket.SIO_RCVALL, socket.RCVALL_ON)
                 data = self.socket.recv(2**24)
-                self.socket.ioctl(socket.SIO_RCVALL, socket.RCVALL_OFF)
                 self.lock.release()
                 for byte in data:
                     self.message_queue.put(byte)
@@ -124,10 +114,7 @@ class Session(threading.Thread):
             msg = self.message_queue.get_message()
             if not msg:
                 continue
-            elif not (isinstance(msg, Interested) or
-                      isinstance(msg, KeepAlive) or
-                      isinstance(msg, BitField) or
-                      isinstance(msg, Have)):
+            else:
                 print('[%s] Received Message %s' % (self.peer[0], msg))
             if isinstance(msg, UnChoke):
                 if self.choked:
