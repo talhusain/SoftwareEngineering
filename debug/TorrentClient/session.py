@@ -5,11 +5,12 @@ from message import *
 import socket
 import threading
 from struct import pack
-import time
+# import time
 from bitstring import BitArray
-from math import ceil
-import torrent
-import message
+# from math import ceil
+# import torrent
+# import message
+import random
 
 
 class Session(threading.Thread):
@@ -52,38 +53,26 @@ class Session(threading.Thread):
         # spawn thread to start receiving messages and queueing them up
         # for processing
         incoming_t = threading.Thread(target=self.receive_incoming)
-        incoming_t.daemon = True
         incoming_t.start()
+
+        # send our interested message to let it know we would like
+        # to be unchoked
+        self.send_message(Message.get_message('interested'))
 
         # spawn thread to start processing the incoming messages
         process_inc_t = threading.Thread(target=self.process_incoming_messages)
-        process_inc_t.daemon = True
         process_inc_t.start()
-
-        # go ahead and send them our empty bitfield message to let them know
-        # that we have no pieces
-        self.send_message(Message.get_message('bitfield', bitfield=self.torrent.bitfield.tobytes()))
-
-        # send our interested message to let it know we would like
-        #to be unchoked
-        self.send_message(Message.get_message('interested'))
 
         # schedule the keep-alive, in the future this will need
         # refactored to close the session on failure, but for now
         # brute force is good enough
-        keepalive = Message.get_message('keep-alive')
-        ka_t = threading.Timer(60, self.send_message, args=(keepalive,))
-        ka_t.daemon = True
-        ka_t.start()
+        # keepalive = Message.get_message('keep-alive')
+        # ka_t = threading.Timer(60, self.send_message, args=(keepalive,))
+        # ka_t.daemon = True
+        # ka_t.start()
 
-        # schedule the piece requests
-        # req_t = threading.Thread(target=self.request_pieces)
-        # req_t.daemon = True
-        # req_t.start()
-
-        while self.alive:
+        while self.alive and not self.message_queue.empty():
             continue
-
 
     def generate_handshake(self):
         """ Returns a handshake. """
@@ -98,120 +87,106 @@ class Session(threading.Thread):
         """ Establishes the socket connection and sends the handshake"""
         handshake = self.generate_handshake()
         self.socket = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
-        self.socket.settimeout(3)
+        self.socket.settimeout(5)
         try:
             self.socket.connect(self.peer)
         except Exception as e:
-            if str(e) != 'timed out':
-                print(self.peer, e)
             return None
         try:
             self.socket.send(handshake)
             data = self.socket.recv(len(handshake))
             if len(data) == len(handshake):
-                print('establish connection with %s' % self.peer[0])
+                print('[%s] Established Connection' % self.peer[0])
                 return data
         except Exception as e:
-            if str(e) != 'timed out':
-                print(self.peer, e)
             return None
 
     def receive_incoming(self):
-        while True:
+        while self.alive:
             try:
                 self.lock.acquire()
-                data = self.socket.recv(2**16)
+                self.socket.settimeout(30)
+                data = self.socket.recv(2**24)
+                self.socket.settimeout(5)
                 self.lock.release()
-                print('got data %s' % data)
                 for byte in data:
                     self.message_queue.put(byte)
             except Exception as e:
                 self.lock.release()
-                if str(e) == 'timed out':
-                    continue
-                print(e)
+                print('[%s] receive_incoming() - %s' % (self.peer[0], e))
                 self.observer.close_session(self)
                 self.alive = False
-                break
 
     def process_incoming_messages(self):
-        while True:
+        while self.alive or not self.message_queue.empty():
             msg = self.message_queue.get_message()
             if not msg:
                 continue
-            else:
-                print('got message %s from %s' % (msg, self.peer[0]))
-                print(msg.to_bytes())
+            elif not (isinstance(msg, Interested) or
+                      isinstance(msg, KeepAlive) or
+                      isinstance(msg, BitField) or
+                      isinstance(msg, Have)):
+                print('[%s] Received Message %s' % (self.peer[0], msg))
             if isinstance(msg, UnChoke):
-                self.choked = False
-                self.requesting_block = False
-                self.request_piece()
+                if self.choked:
+                    self.choked = False
+                    self.request_piece()
             elif isinstance(msg, Choke):
                 self.choked = True
                 self.requesting_block = False
                 self.send_message(Message.get_message('interested'))
             elif isinstance(msg, Have):
                 if not self.bitfield:
-                    self.bitfield = self.torrent.bitfield  # temporary hack for 0 bitfield
+                    self.bitfield = BitArray(self.torrent.total_pieces * '0b0')
                 self.bitfield[msg.index] = True
             elif isinstance(msg, BitField):
                 self.bitfield = BitArray(bytes(msg.bitfield))
-            elif isinstance(msg, Interested):
-                pass
-                # self.send_message(Message.get_message('unchoke'))
             elif isinstance(msg, Piece):
-                print('processing piece msg...')
                 self.requesting_block = False
                 self.current_piece.add_block(int(msg.begin), msg.block)
+                if self.current_piece.complete():
+                    self.current_piece = None
                 self.request_piece()
 
     def request_piece(self):
-        # if choked or waiting for request go ahead and return
-        if self.choked or self.requesting_block:
+        if (not self.bitfield) or self.requesting_block:
             return
-        # select a piece of we aren't already working on one
-        if not self.current_piece and self.bitfield != None:
+        if not self.current_piece:
             for index in range(len(self.bitfield)):
-                if (self.torrent.bitfield[index] == False and
-                    self.bitfield[index] == True and
-                    self.torrent.piece[index] != True):
+                if self.bitfield[index]:
                     self.current_piece = self.torrent.piece[index]
-                    print('starting request for piece %s' % str(index))
                     break
-        for offset in range(len(self.current_piece.bitfield)):
-            if (self.current_piece.bitfield[offset] == False):
+        r = list(range(len(self.current_piece.bitfield)))
+        random.shuffle(r)
+        for offset in r:
+            if not self.current_piece.bitfield[offset]:
                 req = Message.get_message('request',
-                                          offset,
+                                          self.current_piece.index,
                                           offset * (2**14),
                                           2**14)
-                print('starting thread for new requests for piece %s' % str(offset))
-                t = threading.Thread(target=self.send_message, args=(req,))
-                t.daemon = True
-                t.start()
+                # print('requesting for piece %s block %s' %
+                #       (str(self.current_piece.index), str(offset)))
+                self.send_message(req)
                 self.requesting_block = True
+                return
 
     def send_message(self, message):
         """ Sends a message """
-        # messages that can be sent while choked
         if self.choked and not (isinstance(message, Interested) or
                                 isinstance(message, KeepAlive) or
                                 isinstance(message, BitField) or
                                 isinstance(message, UnChoke)):
             return
-        # print('sending message %s - %s to %s' % (message, message.to_bytes(), self.peer[0]))
         try:
+            print('[%s] Sent Message %s' % (self.peer[0], message, ))
             self.lock.acquire()
-            print('sending message %s to %s...' % (message, self.peer[0]))
             self.socket.sendall(message.to_bytes())
             self.lock.release()
         except Exception as e:
             self.lock.release()
-            if str(e) != 'timed out':
-                print(self.peer, e)
-                print(('Error getting incoming message from %s: %s' %
-                      (self.peer[0], e)))
-                self.observer.close_session(self)
-                self.alive = False
+            print('[%s] send_message() - %s' % (self.peer[0], e))
+            self.observer.close_session(self)
+            self.alive = False
 
     def __eq__(self, other):
         return (self.torrent == other.torrent and

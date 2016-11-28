@@ -13,7 +13,7 @@ class Client(object):
             self.download_location = 'torrent_downloads/'
         else:
             self.download_location = download_location
-        threading.Timer(20, self._keepalive_peers).start()
+        threading.Timer(1, self._keepalive_peers).start()
 
     def start(self, torrent):
         for t in torrent.trackers:

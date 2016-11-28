@@ -9,14 +9,15 @@ import threading
 
 
 class Piece(object):
-    def __init__(self, length, hash, block_length=16384):
+    def __init__(self, length, hash, index=None, block_length=16384):
         self.length = length
         self.block_length = block_length
         self.piece = None
-        self.bitfield = BitArray(ceil(length/(self.block_length)) * '0b0')
+        self.bitfield = BitArray(ceil(length / (self.block_length)) * '0b0')
         self.lock = threading.Lock()
         self._in_progress = False
         self._hash = hash
+        self._index = index
 
     def complete(self):
         return self.bitfield == BitArray(len(self.bitfield) * '0b1')
@@ -32,12 +33,13 @@ class Piece(object):
         # we only need the actual space allocated if we are going to add
         # a block
         if not self.piece:
-            self.piece = bytes(b'\x00' * length)
-        self.bitfield[int(offset/self.block_length)] = True
+            self.piece = bytes(b'\x00' * self.length)
+        self.bitfield[int(offset / self.block_length)] = True
         piece = bytearray(self.piece)
         piece[offset:self.block_length] = bytearray(block)
         self.piece = piece
-        print("Percent complete (piece): %s" % str(self.get_percent_complete()))
+        print("Percent complete (Piece %s): %s" % (str(self.index),
+                                                   str(self.get_percent_complete())))
 
     @property
     def in_progress(self):
@@ -51,6 +53,10 @@ class Piece(object):
         self.lock.acquire()
         self.in_progress = value
         self.lock.release()
+
+    @property
+    def index(self):
+        return self._index
 
     def __str__(self):
         return str(self.piece)
@@ -77,13 +83,13 @@ class Torrent(object):
         self._dict = torrent_dict
         self._status = status
         self._info_hash = info_hash
-        self._bitfield = BitArray(int((len(self.pieces)/20)) * '0b0')
+        self._bitfield = BitArray(self.total_pieces * '0b0')
         self._root_path = root_path
         self._piece = []
 
         for index in range(self.total_pieces):
             piece_hash = bytes([self.pieces[i] for i in range(index, index + 20)])
-            self._piece += [Piece(self.piece_length, piece_hash)]
+            self._piece += [Piece(self.piece_length, piece_hash, index)]
 
 
     @property
