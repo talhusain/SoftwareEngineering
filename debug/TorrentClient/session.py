@@ -50,13 +50,13 @@ class Session(threading.Thread):
             self.observer.close_session(self)
             return
 
+        # send our interested message to let it know we would like
+        # to be unchoked
+        self.send_message(Message.get_message('interested'))
+
         # spawn thread to start receiving messages
         incoming_t = threading.Thread(target=self.receive_incoming)
         incoming_t.start()
-
-        # send our interested message to let it know we would like
-        # to be unchoked
-        # self.send_message(Message.get_message('interested'))
 
         # schedule the keep-alive
         keepalive = Message.get_message('keep-alive')
