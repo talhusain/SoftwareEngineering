@@ -1,13 +1,11 @@
 from struct import pack, unpack
 from queue import Queue
-import threading
 
 
 class MessageQueue(Queue):
     def __init__(self):
         Queue.__init__(self)
         self.length = None
-        self.lock = threading.RLock()
 
     def get_message(self):
         ''' Return the message at the front of the queue, or None if
@@ -19,7 +17,6 @@ class MessageQueue(Queue):
                 msg.append(self.get())
             return Message.get_message_from_bytes(msg)
         else:
-            # self.lock.release()
             return None
 
     def peek_length(self):

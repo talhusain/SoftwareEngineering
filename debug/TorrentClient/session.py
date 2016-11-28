@@ -87,6 +87,7 @@ class Session(threading.Thread):
         """ Establishes the socket connection and sends the handshake"""
         handshake = self.generate_handshake()
         self.socket = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
+        self.socket.setsockopt(socket.SOL_SOCKET, socket.SO_REUSEADDR, 1)
         self.socket.settimeout(5)
         try:
             self.socket.connect(self.peer)
@@ -105,9 +106,9 @@ class Session(threading.Thread):
         while self.alive:
             try:
                 self.lock.acquire()
-                self.socket.settimeout(30)
+                sock.setblocking(True)
                 data = self.socket.recv(2**24)
-                self.socket.settimeout(5)
+                sock.setblocking(False)
                 self.lock.release()
                 for byte in data:
                     self.message_queue.put(byte)
