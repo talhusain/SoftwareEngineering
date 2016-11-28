@@ -2,7 +2,6 @@ from bencoding import decode
 from session import Session
 from tracker import Tracker
 from util import generate_peer_id
-from torrent import Status
 import threading
 
 
@@ -17,7 +16,6 @@ class Client(object):
         threading.Timer(5, self._keepalive_peers).start()
 
     def start(self, torrent):
-        torrent.status = Status.downloading
         for t in torrent.trackers:
             tracker = Tracker(t, torrent, generate_peer_id())
             for peer in tracker.get_peers():
