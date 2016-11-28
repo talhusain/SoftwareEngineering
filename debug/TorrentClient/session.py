@@ -55,12 +55,12 @@ class Session(threading.Thread):
         self.send_message(Message.get_message('interested'))
 
         # spawn thread to start receiving messages
-        incoming_t = threading.Thread(target=self.receive_incoming)
-        incoming_t.start()
+        # incoming_t = threading.Thread(target=self.receive_incoming)
+        # incoming_t.start()
 
         # schedule the keep-alive
-        keepalive = Message.get_message('keep-alive')
-        ka_t = threading.Timer(60, self.send_message, args=(keepalive,))
+        # keepalive = Message.get_message('keep-alive')
+        # ka_t = threading.Timer(60, self.send_message, args=(keepalive,))
         # ka_t.start()
 
         while self.alive:
@@ -95,19 +95,18 @@ class Session(threading.Thread):
             return None
 
     def receive_incoming(self):
-        while self.alive:
-            try:
-                self.lock.acquire()
-                data = self.socket.recv(2**24)
-                self.lock.release()
-                for byte in data:
-                    self.message_queue.put(byte)
-                self.process_incoming_messages()
-            except Exception as e:
-                self.lock.release()
-                print('[%s] receive_incoming() - %s' % (self.peer[0], e))
-                self.observer.close_session(self)
-                self.alive = False
+        try:
+            self.lock.acquire()
+            data = self.socket.recv(2**24)
+            self.lock.release()
+            for byte in data:
+                self.message_queue.put(byte)
+            self.process_incoming_messages()
+        except Exception as e:
+            self.lock.release()
+            print('[%s] receive_incoming() - %s' % (self.peer[0], e))
+            self.observer.close_session(self)
+            self.alive = False
 
     def process_incoming_messages(self):
         while not self.message_queue.empty():
@@ -153,18 +152,13 @@ class Session(threading.Thread):
                                           self.current_piece.index,
                                           offset * (2**14),
                                           2**14)
-                # print('requesting for piece %s block %s' %
-                #       (str(self.current_piece.index), str(offset)))
                 self.send_message(req)
                 self.requesting_block = True
                 return
 
     def send_message(self, message):
         """ Sends a message """
-        if self.choked and not (isinstance(message, Interested) or
-                                isinstance(message, KeepAlive) or
-                                isinstance(message, BitField) or
-                                isinstance(message, UnChoke)):
+        if self.choked and isinstance(message, Request):
             return
         try:
             print('[%s] Sent Message %s' % (self.peer[0], message, ))
@@ -176,6 +170,7 @@ class Session(threading.Thread):
             print('[%s] send_message() - %s' % (self.peer[0], e))
             self.observer.close_session(self)
             self.alive = False
+        self.receive_incoming()
 
     def __eq__(self, other):
         return (self.torrent == other.torrent and
