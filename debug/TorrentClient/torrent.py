@@ -98,7 +98,7 @@ class Torrent(object):
         self._piece = []
 
         for index in range(self.total_pieces):
-            piece_hash = bytes([self.pieces[i] for i in range(index, index + 20)])
+            piece_hash = bytes([self.pieces[i] for i in range(index * 20, index * 20 + 20)])
             self._piece += [Piece(self.piece_length, piece_hash, index)]
 
     @property
