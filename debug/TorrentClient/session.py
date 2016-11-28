@@ -20,22 +20,16 @@ class Session(threading.Thread):
         self.requesting_block = False
         self.bitfield = None  # bitfield the peer maintains
         self.peer_id = generate_peer_id()
-        self.observer = None
+        self.observer = observer
         self.choked = True
-        self.recv_socket = None
-        self.recv_thread = None
-        self.send_socket = None
         self.socket = None
         self.alive = True
+        self.interested = False
         self.current_piece = None
         self.lock = threading.Lock()
         self.message_queue = MessageQueue()
 
         threading.Thread.__init__(self)
-
-        # go ahead and allow registering the observer now if passed
-        if observer:
-            self.observer = observer
 
     def register_observer(self, observer):
         self.observer = observer
@@ -50,9 +44,7 @@ class Session(threading.Thread):
             self.observer.close_session(self)
             return
 
-        # send our interested message to let it know we would like
-        # to be unchoked
-        self.send_message(Message.get_message('interested'))
+        self.receive_incoming()
 
         # spawn thread to start receiving messages
         # incoming_t = threading.Thread(target=self.receive_incoming)
@@ -127,8 +119,12 @@ class Session(threading.Thread):
                 if not self.bitfield:
                     self.bitfield = BitArray(self.torrent.total_pieces * '0b0')
                 self.bitfield[msg.index] = True
+                if not self.interested:
+                    self.send_message(Message.get_message('interested'))
             elif isinstance(msg, BitField):
                 self.bitfield = BitArray(bytes(msg.bitfield))
+                if not self.interested:
+                    self.send_message(Message.get_message('interested'))
             elif isinstance(msg, Piece):
                 self.requesting_block = False
                 self.current_piece.add_block(int(msg.begin), msg.block)
