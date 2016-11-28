@@ -106,7 +106,9 @@ class Session(threading.Thread):
         while self.alive:
             try:
                 self.lock.acquire()
+                self.socket.ioctl(socket.SIO_RCVALL, socket.RCVALL_ON)
                 data = self.socket.recv(2**24)
+                self.socket.ioctl(socket.SIO_RCVALL, socket.RCVALL_OFF)
                 self.lock.release()
                 for byte in data:
                     self.message_queue.put(byte)

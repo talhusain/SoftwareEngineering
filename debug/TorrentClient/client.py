@@ -13,7 +13,7 @@ class Client(object):
             self.download_location = 'torrent_downloads/'
         else:
             self.download_location = download_location
-        threading.Timer(5, self._keepalive_peers).start()
+        threading.Timer(10, self._keepalive_peers).start()
 
     def start(self, torrent):
         for t in torrent.trackers:
@@ -36,7 +36,6 @@ class Client(object):
                         session = Session(peer, torrent, self)
                         self._sessions[torrent].append(session)
                         session.start()
-
 
     def start_from_file(self, path):
         with open(path, 'rb') as f:
@@ -77,7 +76,6 @@ if __name__ == '__main__':
     import pprint
     from os import listdir
     from torrent import Torrent
-    from bencoding import decode
     pp = pprint.PrettyPrinter(indent=2)
     torrent_client = Client()
     for file in listdir('sample_torrents'):
