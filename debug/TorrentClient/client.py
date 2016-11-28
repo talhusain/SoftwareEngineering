@@ -20,7 +20,6 @@ class Client(object):
             tracker = Tracker(t, torrent, generate_peer_id())
             for peer in tracker.get_peers():
                 session = Session(peer, torrent, self)
-                # session.register_observer(self)
                 if torrent not in self._sessions:
                     self._sessions[torrent] = []
                 self._sessions[torrent].append(session)
