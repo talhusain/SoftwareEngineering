@@ -65,7 +65,7 @@ class Client(object):
                     s.start()
                     self._sessions[torrent].append(s)
         except:
-            continue
+            pass
 
     def get_sessions(self):
         return self.sessions
