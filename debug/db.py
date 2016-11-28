@@ -151,8 +151,18 @@ class Database(object):
         Returns:
             list: A list of Torrent objects
         """
-        pass
-
+        crit = 'info_hash,name,comment,created_by,creation_time,provider'
+        connection = self.get_connection()
+        cursor = connection.cursor()
+        try:
+            cursor.execute(("SELECT * FROM torrents where name like %s and comment like %s "),
+                           (search_string,search_string))
+            ret = cursor.fetchall()
+        except psycopg2.ProgrammingError as e:
+            print(e)
+            connection.rollback()
+            ret = []
+        return ret
     def import_torrent(self, torrent, provider):
         """Imports a torrent object into the database. This function
         should only be called by the plugin module once in production
