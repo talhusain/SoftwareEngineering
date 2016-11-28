@@ -132,6 +132,7 @@ class Session(threading.Thread):
                 self.requesting_block = False
                 self.current_piece.add_block(int(msg.begin), msg.block)
                 if self.current_piece.complete():
+                    print('FINISHED DOWNLOADING A PIECE')
                     self.current_piece = None
                 self.request_piece()
         if (self.message_queue.peek_length() and
