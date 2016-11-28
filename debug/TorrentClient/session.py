@@ -60,8 +60,8 @@ class Session(threading.Thread):
         self.send_message(Message.get_message('interested'))
 
         # spawn thread to start processing the incoming messages
-        process_inc_t = threading.Thread(target=self.process_incoming_messages)
-        process_inc_t.start()
+        # process_inc_t = threading.Thread(target=self.process_incoming_messages)
+        # process_inc_t.start()
 
         # schedule the keep-alive, in the future this will need
         # refactored to close the session on failure, but for now
@@ -71,7 +71,7 @@ class Session(threading.Thread):
         # ka_t.daemon = True
         # ka_t.start()
 
-        while self.alive and not self.message_queue.empty():
+        while self.alive:
             continue
 
     def generate_handshake(self):
@@ -111,6 +111,7 @@ class Session(threading.Thread):
                 self.lock.release()
                 for byte in data:
                     self.message_queue.put(byte)
+                self.process_incoming_messages()
             except Exception as e:
                 self.lock.release()
                 print('[%s] receive_incoming() - %s' % (self.peer[0], e))
@@ -118,7 +119,7 @@ class Session(threading.Thread):
                 self.alive = False
 
     def process_incoming_messages(self):
-        while self.alive or not self.message_queue.empty():
+        while not self.message_queue.empty():
             msg = self.message_queue.get_message()
             if not msg:
                 continue
