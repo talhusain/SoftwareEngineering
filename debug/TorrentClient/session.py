@@ -169,7 +169,7 @@ class Session(threading.Thread):
         try:
             print('[%s] Sent Message %s' % (self.peer[0], message, ))
             self.lock.acquire()
-            self.socket.sendall(message.to_bytes())
+            self.socket.send(message.to_bytes())
             self.lock.release()
         except Exception as e:
             self.lock.release()
