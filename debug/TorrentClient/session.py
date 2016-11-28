@@ -89,7 +89,11 @@ class Session(threading.Thread):
     def receive_incoming(self):
         try:
             self.lock.acquire()
-            data = self.socket.recv(2**18)
+            data = self.socket.recv(2**14)
+            while True:
+                chunk = self.socket.recv(2**14)
+                data += continued
+                if not continued: break
             self.lock.release()
             print('received data %s' % data)
             for byte in data:
