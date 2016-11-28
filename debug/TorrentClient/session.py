@@ -61,7 +61,7 @@ class Session(threading.Thread):
         # schedule the keep-alive
         keepalive = Message.get_message('keep-alive')
         ka_t = threading.Timer(60, self.send_message, args=(keepalive,))
-        ka_t.start()
+        # ka_t.start()
 
         while self.alive:
             continue
