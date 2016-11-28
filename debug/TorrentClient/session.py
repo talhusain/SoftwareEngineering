@@ -40,16 +40,8 @@ class Session(threading.Thread):
             self.observer.close_session(self)
             return
 
-        self.receive_incoming()
-
         # spawn thread to start receiving messages
         threading.Thread(target=self.receive_incoming).start()
-        # threading.Thread(target=self.process_incoming).start()
-
-        # schedule the keep-alive
-        # keepalive = Message.get_message('keep-alive')
-        # ka_t = threading.Timer(60, self.send_message, args=(keepalive,))
-        # ka_t.start()
 
         while self.alive:
             continue
@@ -89,7 +81,6 @@ class Session(threading.Thread):
                 data = self.socket.recv(2**14)
                 self.lock.release()
                 if data:
-                    # print('received data of length %s: %s' % (len(data), data))
                     for byte in data:
                         self.message_queue.put(byte)
                     self.process_incoming()
@@ -169,7 +160,6 @@ class Session(threading.Thread):
             print('[%s] send_message() - %s' % (self.peer[0], e))
             self.observer.close_session(self)
             self.alive = False
-        # self.receive_incoming()
 
     def __eq__(self, other):
         return (self.torrent == other.torrent and

@@ -9,14 +9,14 @@ import threading
 
 
 class Piece(object):
-    def __init__(self, length, hash, index=None, block_length=16384):
+    def __init__(self, length, p_hash, index=None, block_length=16384):
         self.length = length
         self.block_length = block_length
         self.piece = None
         self.bitfield = BitArray(ceil(length / (self.block_length)) * '0b0')
         self.lock = threading.Lock()
         self._in_progress = False
-        self._hash = hash
+        self._hash = p_hash
         self._index = index
 
     def complete(self):
@@ -38,6 +38,10 @@ class Piece(object):
         piece = bytearray(self.piece)
         piece[offset:self.block_length] = bytearray(block)
         self.piece = piece
+        if self.complete():
+            print('Finished downloading piece %s' % self.index)
+            if sha1(self.piece).digest() == self.p_hash:
+                print('INFO HASH VERIFIED!!!')
         print("Percent complete (Piece %s): %s" % (str(self.index),
                                                    str(self.get_percent_complete())))
 
@@ -69,6 +73,7 @@ class Status(Enum):
     paused = 1
     downloading = 2
     seeding = 3
+
 
 class Torrent(object):
 
