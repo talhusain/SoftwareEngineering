@@ -101,7 +101,6 @@ class Session(threading.Thread):
 
     def process_incoming(self):
         while not self.message_queue.empty():
-        # while self.alive:
             msg = self.message_queue.get_message()
             if not msg:
                 break
@@ -134,9 +133,6 @@ class Session(threading.Thread):
                     self.torrent.bitfield[self.current_piece.index] = True
                     self.current_piece = None
                 self.request_piece()
-        # if (self.message_queue.peek_length() and
-        #         self.message_queue.peek_length() > self.message_queue.qsize()):
-        #     self.receive_incoming()
 
     def request_piece(self):
         if (not self.bitfield) or self.requesting_block:
@@ -173,7 +169,7 @@ class Session(threading.Thread):
             print('[%s] send_message() - %s' % (self.peer[0], e))
             self.observer.close_session(self)
             self.alive = False
-        self.receive_incoming()
+        # self.receive_incoming()
 
     def __eq__(self, other):
         return (self.torrent == other.torrent and
