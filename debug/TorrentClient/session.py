@@ -114,7 +114,7 @@ class Session(threading.Thread):
             elif isinstance(msg, Choke):
                 self.choked = True
                 self.requesting_block = False
-                self.send_message(Message.get_message('interested'))
+                # self.send_message(Message.get_message('interested'))
             elif isinstance(msg, Have):
                 if not self.bitfield:
                     self.bitfield = BitArray(self.torrent.total_pieces * '0b0')
