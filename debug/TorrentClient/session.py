@@ -120,13 +120,13 @@ class Session(threading.Thread):
                     self.bitfield = BitArray(self.torrent.total_pieces * '0b0')
                 self.bitfield[msg.index] = True
                 if not self.interested:
+                    self.interested = True
                     self.send_message(Message.get_message('interested'))
-                self.interested = True
             elif isinstance(msg, BitField):
                 self.bitfield = BitArray(bytes(msg.bitfield))
                 if not self.interested:
+                    self.interested = True
                     self.send_message(Message.get_message('interested'))
-                self.interested = True
             elif isinstance(msg, Piece):
                 self.requesting_block = False
                 self.current_piece.add_block(int(msg.begin), msg.block)
