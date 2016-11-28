@@ -40,7 +40,7 @@ class Piece(object):
         self.piece = piece
         if self.complete():
             print('Finished downloading piece %s' % self.index)
-            if sha1(self.piece).digest() == self.p_hash:
+            if sha1(self.piece).digest() == self.hash:
                 print('INFO HASH VERIFIED!!!')
         print("Percent complete (Piece %s): %s" % (str(self.index),
                                                    str(self.get_percent_complete())))
@@ -61,6 +61,10 @@ class Piece(object):
     @property
     def index(self):
         return self._index
+
+    @property
+    def hash(self):
+        return self._hash
 
     def __str__(self):
         return str(self.piece)
