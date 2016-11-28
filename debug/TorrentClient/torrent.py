@@ -42,6 +42,9 @@ class Piece(object):
             print('Finished downloading piece %s' % self.index)
             if sha1(self.piece).digest() == self.hash:
                 print('INFO HASH VERIFIED!!!')
+            else:
+                print('Error: Expected piece hash does not match')
+                print('%s != %s' % (sha1(self.piece).digest(), self.hash))
         print("Percent complete (Piece %s): %s" % (str(self.index),
                                                    str(self.get_percent_complete())))
 
