@@ -104,6 +104,7 @@ class Session(threading.Thread):
             elif isinstance(msg, Choke):
                 self.choked = True
                 self.requesting_block = False
+                self.send_message(Message.get_message('interested'))
             elif isinstance(msg, Have):
                 if not self.bitfield:
                     self.bitfield = BitArray(self.torrent.total_pieces * '0b0')
@@ -121,7 +122,8 @@ class Session(threading.Thread):
                 self.current_piece.add_block(int(msg.begin), msg.block)
                 if self.current_piece.complete():
                     print('FINISHED DOWNLOADING A PIECE')
-                    print('Total Progress: %s' % self.torrent.get_percent_complete())
+                    print('Total Progress: %s' %
+                          self.torrent.get_percent_complete())
                     self.torrent.bitfield[self.current_piece.index] = True
                     self.current_piece = None
                 if self.torrent.complete():

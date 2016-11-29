@@ -222,7 +222,80 @@ class Database(object):
         Returns:
             Torrent: see torrent.py for more information
         """
-        pass
+        
+        connection = self.get_connection()
+        cursor = connection.cursor()
+        
+        SQL = "SELECT * FROM torrent_files WHERE info_hash = %s;"
+        try:
+            cursor.execute(SQL, (info_hash,))
+            torrent_files = cursor.fetchone()
+        except psycopg2.ProgrammingError as e:
+            print(e)
+            return None
+
+        SQL = "SELECT * FROM torrents WHERE info_hash = %s;"
+        try:
+            cursor.execute(SQL, (info_hash,))
+            tup = cursor.fetchone()
+        except psycopg2.ProgrammingError as e:
+            print(e)
+            return None
+
+        SQL = "SELECT * FROM torrent_files WHERE info_hash = %s;"
+        try:
+            cursor.execute(SQL, (info_hash,))
+            torrent_files = cursor.fetchall()
+        except psycopg2.ProgrammingError as e:
+            print(e)
+            return None
+
+        SQL = "SELECT url FROM announcers WHERE info_hash = %s;"
+        try:
+            cursor.execute(SQL, (info_hash,))
+            urls = cursor.fetchall()
+        except psycopg2.ProgrammingError as e:
+            print(e)
+            return None
+
+        ######################### REFACTORING #########################
+
+        """
+        torrent = { b'info hash': bytes()
+                   
+                  }
+        """
+
+        ######################### REFACTORING #########################
+
+        torrent = {}
+        torrent[b'info hash'] = bytes(info_hash[0])
+        torrent[b'comment'] = tup[2].encode("utf-8")
+        torrent[b'created by'] = tup[3].encode("utf-8")
+        torrent[b'creation date'] = tup[4]
+
+        torrent[b'info'] = {}
+        torrent[b'info'][b'name'] = tup[1].encode("utf-8")
+        torrent[b'info'][b'piece length'] = bytes(tup[5])
+        torrent[b'info'][b'pieces'] = bytes(tup[6])
+
+        if (len(torrent_files) == 1):
+            torrent[b'info'][b'length'] = torrent_files[0][1]
+            torrent[b'announce'] = urls.encode("utf-8")
+        elif (len(torrent_files) > 1):
+            torrent[b'info'][b'files'] = []
+            for file in torrent_files:
+                torrent[b'info'][b'files'].append({b'path': [file[0].encode("utf-8")], b'length': file[1].encode("utf-8")})
+            announce_list = []
+            for tracker in urls:
+                announce_list.append(tracker[0].encode("utf-8"))
+            print(announce_list)
+            torrent[b'announce-list'] = announce_list
+
+        cursor.close()
+        connection.close()
+        
+        return Torrent(torrent)
 
     def add_plugin(self, url):
         """Add a plugin URL to the database
@@ -233,7 +306,20 @@ class Database(object):
         Returns:
             BOOL: success or failure
         """
-        pass
+        
+        connection = self.get_connection()
+        cursor = connection.cursor()
+        try:
+            cursor.execute( ("INSERT INTO plugins VALUES (%s, %s) "
+                             "ON CONFLICT (url) DO NOTHING"),
+                             (url, last_run) )
+        except psycopg2.ProgrammingError as e:
+            print(e)
+            return False
+        connection.commit()
+        cursor.close()
+        connection.close()
+        return True
 
     def remove_plugin(self, url):
         connection = self.get_connection()
