@@ -271,7 +271,7 @@ class Database(object):
         torrent[b'info hash'] = bytes(info_hash[0])
         torrent[b'comment'] = tup[2].encode("utf-8")
         torrent[b'created by'] = tup[3].encode("utf-8")
-        torrent[b'creation date'] = tup[4]
+        torrent[b'creation date'] = time.mktime(tup[4].timetuple())
 
         torrent[b'info'] = {}
         torrent[b'info'][b'name'] = tup[1].encode("utf-8")
