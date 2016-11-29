@@ -37,7 +37,7 @@ class Piece(object):
         self.bitfield[int(offset / self.block_length)] = True
         piece = bytearray(self.piece)
         piece[offset:self.block_length] = bytearray(block)
-        self.piece = piece
+        self.piece = bytes(piece)
         if self.complete():
             print('Finished downloading piece %s' % self.index)
             if sha1(self.piece).digest() == self.hash:
@@ -199,6 +199,16 @@ class Torrent(object):
     @property
     def piece(self):
         return self._piece
+
+    def get_percent_complete(self):
+        count = 0
+        for b in self.bitfield:
+            if b:
+                count += 1
+        return 100.0 * count / len(self.bitfield)
+
+    def complete(self):
+        return self.bitfield == BitArray(len(self.bitfield) * '0b1')
 
     def __eq__(self, other):
         ''' Torrents are considered equal if their info_hashes are the same'''

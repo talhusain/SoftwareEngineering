@@ -121,8 +121,12 @@ class Session(threading.Thread):
                 self.current_piece.add_block(int(msg.begin), msg.block)
                 if self.current_piece.complete():
                     print('FINISHED DOWNLOADING A PIECE')
+                    print('Total Progress: %s' % self.torrent.get_percent_complete())
                     self.torrent.bitfield[self.current_piece.index] = True
                     self.current_piece = None
+                if self.torrent.complete():
+                    print('FINISHED DOWNLOADING ENTIRE TORRENT')
+                    self.alive = False
                 self.request_piece()
 
     def request_piece(self):
